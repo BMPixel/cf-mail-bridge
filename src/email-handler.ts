@@ -1,13 +1,13 @@
 import { EmailMessage } from './types';
 import { DatabaseService } from './database';
 import PostalMime from 'postal-mime';
-import * as TurndownService from 'turndown';
+import TurndownService from 'turndown';
 
 export class EmailHandler {
     private turndownService: any;
 
     constructor(private dbService: DatabaseService) {
-        this.turndownService = new (TurndownService as any)({
+        this.turndownService = new TurndownService({
             headingStyle: 'atx',
             codeBlockStyle: 'fenced',
             bulletListMarker: '-'
