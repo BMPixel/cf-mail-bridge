@@ -103,7 +103,7 @@ export class DatabaseService {
 
             // Get messages with pagination
             const messages = await this.db.prepare(`
-                SELECT id, message_id, from_address as from, subject,
+                SELECT id, message_id, from_address as "from", subject,
                        body_text, body_html, received_at, raw_size as size
                 FROM messages
                 WHERE user_id = ?
@@ -131,7 +131,7 @@ export class DatabaseService {
     async getMessageById(messageId: number, userId: number): Promise<MessageResponse | null> {
         try {
             const message = await this.db.prepare(`
-                SELECT id, message_id, from_address as from, subject,
+                SELECT id, message_id, from_address as "from", subject,
                        body_text, body_html, received_at, raw_size as size
                 FROM messages
                 WHERE id = ? AND user_id = ?
