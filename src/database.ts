@@ -90,6 +90,7 @@ export class DatabaseService {
         offset: number = 0
     ): Promise<{ messages: MessageResponse[]; count: number; hasMore: boolean }> {
         try {
+            console.log(`[DB] Fetching messages for user ${userId} (limit: ${limit}, offset: ${offset})`);
             // Get total count
             const countResult = await this.db.prepare(`
                 SELECT COUNT(*) as count
@@ -98,6 +99,7 @@ export class DatabaseService {
             `).bind(userId).first<{ count: number }>();
 
             const totalCount = countResult?.count || 0;
+            console.log(`[DB] Total messages for user ${userId}: ${totalCount}`);
 
             // Get messages with pagination
             const messages = await this.db.prepare(`
@@ -117,7 +119,7 @@ export class DatabaseService {
                 hasMore
             };
         } catch (error) {
-            console.error('Error getting messages:', error);
+            console.error(`[DB] Error fetching messages for user ${userId}:`, error);
             return {
                 messages: [],
                 count: 0,

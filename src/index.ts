@@ -15,6 +15,9 @@ import { EmailHandler } from './email-handler';
 
 export default {
     async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+        const startTime = Date.now();
+        console.log(`[${method}] ${url.pathname} - Request started`);
+        
         try {
             const url = new URL(request.url);
             const path = url.pathname;
@@ -76,19 +79,30 @@ export default {
             return createErrorResponse(ErrorCode.NOT_FOUND, 'Endpoint not found', 404, corsHeaders);
 
         } catch (error) {
-            console.error('Worker error:', error);
+            const duration = Date.now() - startTime;
+            console.error(`[${method}] ${path} - Worker error (${duration}ms):`, error);
             return createErrorResponse(ErrorCode.INTERNAL_ERROR, 'Internal server error', 500);
+        } finally {
+            const duration = Date.now() - startTime;
+            console.log(`[${method}] ${path} - Request completed in ${duration}ms`);
         }
     },
 
     async email(message: any, env: Env, ctx: ExecutionContext): Promise<void> {
+        const startTime = Date.now();
+        console.log(`[EMAIL] Processing incoming email from: ${message.from} to: ${message.to}`);
+        
         try {
             const dbService = new DatabaseService(env.DB);
             const emailHandler = new EmailHandler(dbService);
             
             await emailHandler.processCloudflareEmail(message);
+            
+            const duration = Date.now() - startTime;
+            console.log(`[EMAIL] Email processed successfully in ${duration}ms`);
         } catch (error) {
-            console.error('Email handler error:', error);
+            const duration = Date.now() - startTime;
+            console.error(`[EMAIL] Email processing failed (${duration}ms):`, error);
         }
     }
 };
@@ -247,11 +261,15 @@ async function handleRegister(
         const passwordHash = await authService.hashPassword(body.password);
         
         // Create user
+        console.log(`[REGISTER] Creating user: ${body.username}`);
         const result = await dbService.createUser(body.username, passwordHash);
         if (typeof result === 'string') {
+            console.log(`[REGISTER] User creation failed: ${result}`);
             const message = result === ErrorCode.USER_EXISTS ? 'Username already exists' : 'Registration failed';
             return createErrorResponse(result, message, 400, corsHeaders);
         }
+        
+        console.log(`[REGISTER] User created successfully: ${body.username}`);
         
         // Generate token
         const token = await authService.generateToken(body.username);
@@ -284,16 +302,21 @@ async function handleLogin(
         const body: LoginRequest = await request.json();
         
         // Find user
+        console.log(`[LOGIN] Login attempt for user: ${body.username}`);
         const user = await dbService.getUserByUsername(body.username);
         if (!user) {
+            console.log(`[LOGIN] User not found: ${body.username}`);
             return createErrorResponse(ErrorCode.INVALID_CREDENTIALS, 'Invalid credentials', 401, corsHeaders);
         }
         
         // Verify password
         const isValidPassword = await authService.verifyPassword(body.password, user.password_hash);
         if (!isValidPassword) {
+            console.log(`[LOGIN] Invalid password for user: ${body.username}`);
             return createErrorResponse(ErrorCode.INVALID_CREDENTIALS, 'Invalid credentials', 401, corsHeaders);
         }
+        
+        console.log(`[LOGIN] Login successful for user: ${body.username}`);
         
         // Update last access
         await dbService.updateUserLastAccess(user.id);

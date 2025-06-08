@@ -49,7 +49,7 @@ export class EmailHandler {
                 return false;
             }
         } catch (error) {
-            console.error('Error handling incoming email:', error);
+            console.error(`[EMAIL] Error handling incoming email from ${message.from}:`, error);
             return false;
         }
     }
@@ -105,13 +105,22 @@ export class EmailHandler {
     private cleanHtml(html: string | undefined): string | null {
         if (!html) return null;
         
+        console.log('[EMAIL] Sanitizing HTML content');
+        const originalLength = html.length;
+        
         // Basic HTML cleaning - remove dangerous scripts and normalize
-        return html
+        const cleaned = html
             .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
             .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
             .replace(/javascript:/gi, '')
             .replace(/on\w+\s*=/gi, '')
             .trim() || null;
+            
+        if (cleaned && cleaned.length < originalLength) {
+            console.log(`[EMAIL] Removed ${originalLength - cleaned.length} chars of potentially malicious content`);
+        }
+        
+        return cleaned;
     }
 
     private generateMessageId(): string {

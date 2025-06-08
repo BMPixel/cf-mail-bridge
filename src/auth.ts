@@ -78,6 +78,7 @@ export class AuthService {
             // Compare hashes
             return this.compareArrays(storedHash, derivedHash);
         } catch (error) {
+            console.error('[AUTH] Password verification error:', error);
             return false;
         }
     }
@@ -93,6 +94,7 @@ export class AuthService {
     }
 
     async generateToken(username: string): Promise<string> {
+        console.log(`[AUTH] Generating token for user: ${username}`);
         const now = Math.floor(Date.now() / 1000);
         const payload: JWTPayload = {
             sub: username,
@@ -107,9 +109,12 @@ export class AuthService {
 
     async verifyToken(token: string): Promise<JWTPayload | null> {
         try {
+            console.log('[AUTH] Verifying JWT token');
             const { payload } = await jwtVerify(token, this.secret);
+            console.log(`[AUTH] Token verified for user: ${payload.sub}`);
             return payload as JWTPayload;
         } catch (error) {
+            console.log('[AUTH] Token verification failed:', error instanceof Error ? error.message : 'Unknown error');
             return null;
         }
     }
