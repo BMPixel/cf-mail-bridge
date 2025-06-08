@@ -11,7 +11,14 @@
       "Bash(git commit:*)",
       "Bash(ls:*)",
       "Bash(npm uninstall:*)",
-      "Bash(brew uninstall:*)"
+      "Bash(brew uninstall:*)",
+      "Bash(npm install:*)",
+      "Bash(npx tsc:*)",
+      "Bash(node test-resend.js)",
+      "WebFetch(domain:resend.com)",
+      "Bash(node:*)",
+      "Bash(timeout 15s npx wrangler tail --format pretty)",
+      "Bash(rm:*)"
     ],
     "deny": []
   }
