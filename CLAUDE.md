@@ -5,3 +5,4 @@
   - `npx wrangler dev`
   - `npx wrangler tail`
   - `npx wrangler d1 execute`
+- The config is @wrangler.jsonc instead of @wrangler.toml

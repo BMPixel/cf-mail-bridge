@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install)",
+      "Bash(npm run:*)",
+      "Bash(curl:*)",
+      "Bash(mkdir:*)",
+      "Bash(git add:*)",
+      "Bash(npx wrangler:*)",
+      "WebFetch(domain:gist.github.com)",
+      "Bash(git commit:*)",
+      "Bash(ls:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(brew uninstall:*)"
+    ],
+    "deny": []
+  }
+}
