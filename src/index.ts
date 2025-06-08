@@ -39,7 +39,7 @@ export default {
             // Initialize services
             const authService = new AuthService(env.JWT_SECRET);
             const dbService = new DatabaseService(env.DB);
-            const emailHandler = new EmailHandler(dbService);
+            const emailHandler = new EmailHandler(dbService, env);
 
             // Route handling
             if (path === '/' && method === 'GET') {
@@ -98,6 +98,10 @@ export default {
                 return handleGetMessage(request, authService, dbService, messageId, corsHeaders);
             }
 
+            if (path === '/api/v1/send-test-email' && method === 'POST') {
+                return handleSendTestEmail(request, emailHandler, corsHeaders);
+            }
+
             // 404 for unmatched routes
             return createErrorResponse(ErrorCode.NOT_FOUND, 'Endpoint not found', 404, corsHeaders);
 
@@ -117,7 +121,7 @@ export default {
         
         try {
             const dbService = new DatabaseService(env.DB);
-            const emailHandler = new EmailHandler(dbService);
+            const emailHandler = new EmailHandler(dbService, env);
             
             await emailHandler.processCloudflareEmail(message);
             
@@ -1217,6 +1221,84 @@ async function handleMessagesPage(corsHeaders: Record<string, string>): Promise<
     return new Response(html, {
         headers: { ...corsHeaders, 'Content-Type': 'text/html' }
     });
+}
+
+async function handleSendTestEmail(
+    request: Request,
+    emailHandler: any,
+    corsHeaders: Record<string, string>
+): Promise<Response> {
+    try {
+        const body = await request.json();
+        const { to, subject, message, html } = body;
+        
+        if (!to) {
+            return createErrorResponse(ErrorCode.INVALID_REQUEST, 'Email address is required', 400, corsHeaders);
+        }
+        
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(to)) {
+            return createErrorResponse(ErrorCode.INVALID_REQUEST, 'Invalid email format', 400, corsHeaders);
+        }
+        
+        console.log(`[SEND_EMAIL] Sending test email to: ${to}`);
+        
+        const emailOptions = {
+            from: 'noreply@agent.tai.chat',
+            to: to,
+            subject: subject || 'Test Email from CF Mail Bridge',
+            text: message || 'This is a test email sent from the Cloudflare Mail Bridge service using Resend.',
+            html: html || createTestEmailHTML(),
+            tags: [{ name: 'type', value: 'test' }]
+        };
+        
+        const result = await emailHandler.sendEmail(emailOptions);
+        
+        if (result.success) {
+            console.log(`[SEND_EMAIL] Email sent successfully to ${to}, ID: ${result.messageId}`);
+            return new Response(JSON.stringify({
+                success: true,
+                data: {
+                    messageId: result.messageId,
+                    to: to,
+                    subject: emailOptions.subject,
+                    timestamp: new Date().toISOString()
+                }
+            }), {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+        } else {
+            console.error(`[SEND_EMAIL] Failed to send email to ${to}:`, result.error);
+            return createErrorResponse(ErrorCode.INTERNAL_ERROR, result.error || 'Failed to send email', 500, corsHeaders);
+        }
+        
+    } catch (error) {
+        console.error('[SEND_EMAIL] Error processing request:', error);
+        return createErrorResponse(ErrorCode.INTERNAL_ERROR, 'Failed to process email request', 500, corsHeaders);
+    }
+}
+
+function createTestEmailHTML(): string {
+    const timestamp = new Date().toISOString();
+    return `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <h2 style="color: #333;">🎉 Test Email Success!</h2>
+    <p>This is a test email sent from the <strong>Cloudflare Mail Bridge</strong> service using <strong>Resend</strong>.</p>
+    <div style="background: #f5f5f5; padding: 20px; margin: 20px 0; border-radius: 5px;">
+        <h3>Service Information:</h3>
+        <ul>
+            <li><strong>Service:</strong> CF Mail Bridge</li>
+            <li><strong>Email Provider:</strong> Resend</li>
+            <li><strong>Domain:</strong> agent.tai.chat</li>
+            <li><strong>Timestamp:</strong> ${timestamp}</li>
+        </ul>
+    </div>
+    <p>If you received this email, the Resend integration is working correctly! 🚀</p>
+    <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+    <p style="color: #666; font-size: 12px;">
+        This email was sent via the CF Mail Bridge service for testing purposes.
+    </p>
+</div>`;
 }
 
 function createErrorResponse(

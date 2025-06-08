@@ -20,6 +20,7 @@
 	"dependencies": {
 		"jose": "^5.2.0",
 		"postal-mime": "^2.3.2",
+		"resend": "^4.5.2",
 		"turndown": "^7.2.0"
 	},
 	"devDependencies": {

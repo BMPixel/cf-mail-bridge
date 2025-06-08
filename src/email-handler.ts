@@ -1,17 +1,22 @@
-import { EmailMessage } from './types';
+import { EmailMessage, ResendEmailOptions, EmailSendResult, Env } from './types';
 import { DatabaseService } from './database';
+import { getResendService, ResendEmailService } from './resend-service';
 import PostalMime from 'postal-mime';
 import TurndownService from 'turndown';
 
 export class EmailHandler {
     private turndownService: any;
+    private resendService: ResendEmailService;
 
-    constructor(private dbService: DatabaseService) {
+    constructor(private dbService: DatabaseService, private env?: Env) {
         this.turndownService = new TurndownService({
             headingStyle: 'atx',
             codeBlockStyle: 'fenced',
             bulletListMarker: '-'
         });
+        
+        // Initialize Resend service if API key is available
+        this.resendService = getResendService(env?.RESEND_API_KEY);
     }
 
     async handleIncomingEmail(message: EmailMessage): Promise<boolean> {
@@ -268,5 +273,122 @@ export class EmailHandler {
         }
 
         return true;
+    }
+
+    // Resend email sending methods
+    async sendEmail(options: ResendEmailOptions): Promise<EmailSendResult> {
+        try {
+            console.log('[EMAIL] Sending email via Resend:', {
+                from: options.from,
+                to: options.to,
+                subject: options.subject
+            });
+
+            const result = await this.resendService.sendEmail(options);
+            
+            if (result.success) {
+                console.log('[EMAIL] Email sent successfully:', result.messageId);
+            } else {
+                console.error('[EMAIL] Failed to send email:', result.error);
+            }
+            
+            return result;
+        } catch (error) {
+            console.error('[EMAIL] Error sending email:', error);
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Unknown error',
+                retryable: false
+            };
+        }
+    }
+
+    async sendReply(originalMessage: EmailMessage, replyContent: string, replyHtml?: string): Promise<EmailSendResult> {
+        try {
+            const subject = originalMessage.subject?.startsWith('Re:') 
+                ? originalMessage.subject 
+                : `Re: ${originalMessage.subject || 'No Subject'}`;
+
+            const emailOptions: ResendEmailOptions = {
+                from: 'noreply@agent.tai.chat', // Default reply address
+                to: originalMessage.from,
+                subject: subject,
+                text: replyContent,
+                html: replyHtml,
+                replyTo: originalMessage.to,
+                headers: {
+                    'In-Reply-To': originalMessage.headers?.['message-id'] || '',
+                    'References': originalMessage.headers?.['message-id'] || ''
+                }
+            };
+
+            return await this.sendEmail(emailOptions);
+        } catch (error) {
+            console.error('[EMAIL] Error sending reply:', error);
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Unknown error',
+                retryable: false
+            };
+        }
+    }
+
+    async sendNotification(to: string, subject: string, message: string, messageHtml?: string): Promise<EmailSendResult> {
+        try {
+            const emailOptions: ResendEmailOptions = {
+                from: 'notifications@agent.tai.chat', // Default notification address
+                to: to,
+                subject: subject,
+                text: message,
+                html: messageHtml,
+                tags: [{ name: 'type', value: 'notification' }]
+            };
+
+            return await this.sendEmail(emailOptions);
+        } catch (error) {
+            console.error('[EMAIL] Error sending notification:', error);
+            return {
+                success: false,
+                error: error instanceof Error ? error.message : 'Unknown error',
+                retryable: false
+            };
+        }
+    }
+
+    async sendBulkEmails(emails: ResendEmailOptions[]): Promise<EmailSendResult[]> {
+        try {
+            console.log('[EMAIL] Sending bulk emails:', emails.length);
+            const results = await this.resendService.sendBulkEmails(emails);
+            
+            const successCount = results.filter(r => r.success).length;
+            const failureCount = results.length - successCount;
+            
+            console.log('[EMAIL] Bulk email results:', { 
+                total: results.length, 
+                success: successCount, 
+                failed: failureCount 
+            });
+            
+            return results;
+        } catch (error) {
+            console.error('[EMAIL] Error sending bulk emails:', error);
+            return emails.map(() => ({
+                success: false,
+                error: error instanceof Error ? error.message : 'Unknown error',
+                retryable: false
+            }));
+        }
+    }
+
+    async validateEmailAddress(email: string): Promise<boolean> {
+        return await this.resendService.validateEmailAddress(email);
+    }
+
+    getResendConfiguration(): { initialized: boolean; hasApiKey: boolean } {
+        return this.resendService.getConfiguration();
+    }
+
+    async healthCheckResend(): Promise<boolean> {
+        return await this.resendService.healthCheck();
     }
 }
