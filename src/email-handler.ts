@@ -1,6 +1,6 @@
 import { EmailMessage } from './types';
 import { DatabaseService } from './database';
-import { PostalMime } from 'postal-mime';
+import PostalMime from 'postal-mime';
 
 export class EmailHandler {
     constructor(private dbService: DatabaseService) {}
