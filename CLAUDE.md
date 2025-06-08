@@ -1,1 +1,7 @@
 - To implement and test new feature online: build, commit and then deploy.
+- Always use `npx wrangler` instead of `wrangler` directly since global wrangler has been uninstalled.
+- All wrangler commands should be prefixed with `npx`, for example:
+  - `npx wrangler deploy`
+  - `npx wrangler dev`
+  - `npx wrangler tail`
+  - `npx wrangler d1 execute`
