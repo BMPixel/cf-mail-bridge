@@ -6,3 +6,5 @@
   - `npx wrangler tail`
   - `npx wrangler d1 execute`
 - The config is @wrangler.jsonc instead of @wrangler.toml
+- Realtime remote log is in /tmp/cf-mail-bridge.log with json obj after json obj
+- After deploy, sleep 10 secs before test again
