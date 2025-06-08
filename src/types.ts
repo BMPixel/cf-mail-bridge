@@ -1,6 +1,7 @@
 export interface Env {
     DB: D1Database;
     JWT_SECRET: string;
+    RESEND_API_KEY?: string;
 }
 
 export interface User {
@@ -86,6 +87,7 @@ export interface JWTPayload {
     sub: string; // username
     iat: number; // issued at
     exp: number; // expiration time
+    [key: string]: any; // Index signature for jose compatibility
 }
 
 export interface EmailMessage {
@@ -108,4 +110,39 @@ export enum ErrorCode {
     NOT_FOUND = 'NOT_FOUND',
     RATE_LIMIT = 'RATE_LIMIT',
     INTERNAL_ERROR = 'INTERNAL_ERROR'
+}
+
+export interface ResendEmailOptions {
+    from: string;
+    to: string | string[];
+    subject: string;
+    text?: string;
+    html?: string;
+    cc?: string | string[];
+    bcc?: string | string[];
+    replyTo?: string;
+    tags?: Array<{ name: string; value: string }>;
+    headers?: Record<string, string>;
+    attachments?: Array<{
+        filename: string;
+        content: string | ArrayBuffer | Uint8Array;
+        contentType?: string;
+    }>;
+}
+
+export interface ResendEmailResponse {
+    success: boolean;
+    id?: string;
+    error?: {
+        code: string;
+        message: string;
+        details?: any;
+    };
+}
+
+export interface EmailSendResult {
+    success: boolean;
+    messageId?: string;
+    error?: string;
+    retryable?: boolean;
 }
