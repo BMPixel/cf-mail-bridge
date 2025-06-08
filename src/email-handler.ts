@@ -131,84 +131,101 @@ export class EmailHandler {
     }
 
     // Process raw email from Cloudflare Email Workers
-    async processCloudflareEmail(email: any): Promise<boolean> {
+    async processCloudflareEmail(message: any): Promise<boolean> {
         try {
-            console.log('[EMAIL] Raw email object received:', JSON.stringify(email, null, 2));
-            console.log('[EMAIL] Email properties available:', Object.keys(email));
+            console.log('[EMAIL] Message object received');
+            console.log('[EMAIL] Message properties:', Object.keys(message));
+            console.log('[EMAIL] Message from:', message.from);
+            console.log('[EMAIL] Message to:', message.to);
             
-            // Check if email has a ReadableStream for content
-            if (email.stream && typeof email.stream.getReader === 'function') {
-                console.log('[EMAIL] Email has ReadableStream, attempting to read content');
-                const reader = email.stream.getReader();
-                const chunks: Uint8Array[] = [];
+            // Extract basic metadata
+            const from = message.from;
+            const to = message.to;
+            
+            // Get subject from headers
+            let subject: string | undefined;
+            let headers: Record<string, string> = {};
+            
+            if (message.headers && typeof message.headers.get === 'function') {
+                subject = message.headers.get('subject');
+                console.log('[EMAIL] Subject from headers:', subject);
                 
+                // Try to get all headers
                 try {
-                    while (true) {
-                        const { done, value } = await reader.read();
-                        if (done) break;
-                        chunks.push(value);
+                    const headerEntries = message.headers.entries();
+                    for (const [key, value] of headerEntries) {
+                        headers[key.toLowerCase()] = value;
                     }
-                } finally {
-                    reader.releaseLock();
+                } catch (e) {
+                    console.log('[EMAIL] Could not iterate headers');
                 }
-                
-                // Combine chunks and decode
-                const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
-                const combined = new Uint8Array(totalLength);
-                let offset = 0;
-                for (const chunk of chunks) {
-                    combined.set(chunk, offset);
-                    offset += chunk.length;
-                }
-                
-                const rawContent = new TextDecoder().decode(combined);
-                console.log('[EMAIL] Raw email content from stream:', rawContent.substring(0, 1000) + '...');
-                
-                // Parse the raw email content (basic MIME parsing)
-                const parsedContent = this.parseRawEmail(rawContent);
-                
-                const emailMessage: EmailMessage = {
-                    from: email.from || parsedContent.from || '',
-                    to: email.to || parsedContent.to || '',
-                    subject: email.subject || parsedContent.subject,
-                    text: parsedContent.text,
-                    html: parsedContent.html,
-                    headers: this.parseHeaders(email.headers || parsedContent.headers),
-                    size: rawContent.length
-                };
-                
-                console.log('[EMAIL] Parsed email message:', {
-                    from: emailMessage.from,
-                    to: emailMessage.to,
-                    subject: emailMessage.subject,
-                    textLength: emailMessage.text?.length || 0,
-                    htmlLength: emailMessage.html?.length || 0
-                });
-                
-                return await this.handleIncomingEmail(emailMessage);
-            } else {
-                // Direct property access (fallback)
-                console.log('[EMAIL] No stream found, using direct property access');
-                const emailMessage: EmailMessage = {
-                    from: email.from || '',
-                    to: email.to || '',
-                    subject: email.subject,
-                    text: email.text,
-                    html: email.html,
-                    headers: this.parseHeaders(email.headers),
-                    size: this.calculateEmailSize(email)
-                };
-                
-                console.log('[EMAIL] Direct access email message:', {
-                    from: emailMessage.from,
-                    to: emailMessage.to,
-                    subject: emailMessage.subject,
-                    textLength: emailMessage.text?.length || 0,
-                    htmlLength: emailMessage.html?.length || 0
-                });
-
-                return await this.handleIncomingEmail(emailMessage);
             }
+            
+            // Get email content using methods
+            let text: string | undefined;
+            let html: string | undefined;
+            
+            try {
+                if (typeof message.text === 'function') {
+                    text = await message.text();
+                    console.log('[EMAIL] Text content length:', text?.length || 0);
+                } else {
+                    console.log('[EMAIL] No text() method available');
+                }
+            } catch (error) {
+                console.error('[EMAIL] Error getting text content:', error);
+            }
+            
+            try {
+                if (typeof message.html === 'function') {
+                    html = await message.html();
+                    console.log('[EMAIL] HTML content length:', html?.length || 0);
+                } else {
+                    console.log('[EMAIL] No html() method available');
+                }
+            } catch (error) {
+                console.error('[EMAIL] Error getting HTML content:', error);
+            }
+            
+            // Fallback: try to get content from raw message if methods don't work
+            if (!text && !html) {
+                console.log('[EMAIL] No content from methods, trying raw access');
+                if (typeof message.raw === 'function') {
+                    try {
+                        const rawContent = await message.raw();
+                        console.log('[EMAIL] Raw content length:', rawContent?.length || 0);
+                        if (rawContent) {
+                            const parsed = this.parseRawEmail(rawContent);
+                            text = parsed.text;
+                            html = parsed.html;
+                            if (!subject) subject = parsed.subject;
+                        }
+                    } catch (error) {
+                        console.error('[EMAIL] Error getting raw content:', error);
+                    }
+                }
+            }
+            
+            const emailMessage: EmailMessage = {
+                from: from || '',
+                to: to || '',
+                subject: subject,
+                text: text,
+                html: html,
+                headers: headers,
+                size: (text?.length || 0) + (html?.length || 0)
+            };
+            
+            console.log('[EMAIL] Final email message:', {
+                from: emailMessage.from,
+                to: emailMessage.to,
+                subject: emailMessage.subject,
+                textLength: emailMessage.text?.length || 0,
+                htmlLength: emailMessage.html?.length || 0,
+                headersCount: Object.keys(emailMessage.headers || {}).length
+            });
+
+            return await this.handleIncomingEmail(emailMessage);
         } catch (error) {
             console.error('[EMAIL] Error processing Cloudflare email:', error);
             return false;
