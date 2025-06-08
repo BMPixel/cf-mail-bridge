@@ -50,6 +50,28 @@ export default {
                 return handleRegisterPage(corsHeaders);
             }
 
+            if (path === '/login.html' && method === 'GET') {
+                return new Response(null, {
+                    status: 301,
+                    headers: { ...corsHeaders, 'Location': '/login' }
+                });
+            }
+
+            if (path === '/login' && method === 'GET') {
+                return handleLoginPage(corsHeaders);
+            }
+
+            if (path === '/messages.html' && method === 'GET') {
+                return new Response(null, {
+                    status: 301,
+                    headers: { ...corsHeaders, 'Location': '/messages' }
+                });
+            }
+
+            if (path === '/messages' && method === 'GET') {
+                return handleMessagesPage(corsHeaders);
+            }
+
             if (path === '/health' && method === 'GET') {
                 return handleHealthCheck(dbService, corsHeaders);
             }
@@ -139,7 +161,7 @@ async function handleHomepage(corsHeaders: Record<string, string>): Promise<Resp
             </ul>
         </div>
         
-        <p><a href="/register">Register for an account</a></p>
+        <p><a href="/register">Register for an account</a> | <a href="/login">Login</a></p>
     </div>
 </body>
 </html>`;
@@ -184,7 +206,7 @@ async function handleRegisterPage(corsHeaders: Record<string, string>): Promise<
             <button type="submit">Register</button>
         </form>
         <div id="message"></div>
-        <p><a href="/">Back to home</a></p>
+        <p><a href="/">Back to home</a> | <a href="/login">Login</a></p>
     </div>
     
     <script>
@@ -478,6 +500,723 @@ async function handleGetMessage(
     } catch (error) {
         return createErrorResponse(ErrorCode.INTERNAL_ERROR, 'Failed to retrieve message', 500, corsHeaders);
     }
+}
+
+async function handleLoginPage(corsHeaders: Record<string, string>): Promise<Response> {
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Email Bridge</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #f5f5f5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .login-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            text-align: center;
+            font-size: 28px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #555;
+            font-weight: 500;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus,
+        input[type="password"]:focus {
+            outline: none;
+            border-color: #0066cc;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #0066cc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #0052a3;
+        }
+
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .message {
+            margin-top: 20px;
+            padding: 12px;
+            border-radius: 4px;
+            text-align: center;
+            display: none;
+        }
+
+        .message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+
+        .message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+
+        .links {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .links a {
+            color: #0066cc;
+            text-decoration: none;
+            margin: 0 10px;
+        }
+
+        .links a:hover {
+            text-decoration: underline;
+        }
+
+        .spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #0066cc;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h1>Login</h1>
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" required autofocus>
+            </div>
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required>
+            </div>
+            <button type="submit" id="submitBtn">Login</button>
+        </form>
+        <div id="message" class="message"></div>
+        <div class="spinner" id="spinner"></div>
+        <div class="links">
+            <a href="/register">Register</a>
+            <a href="/">Home</a>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const messageDiv = document.getElementById('message');
+            const submitBtn = document.getElementById('submitBtn');
+            const spinner = document.getElementById('spinner');
+            
+            // Reset message
+            messageDiv.className = 'message';
+            messageDiv.textContent = '';
+            messageDiv.style.display = 'none';
+            
+            // Show loading state
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Logging in...';
+            spinner.style.display = 'block';
+            
+            try {
+                const response = await fetch('/api/v1/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Store token
+                    localStorage.setItem('authToken', data.data.token);
+                    localStorage.setItem('username', username);
+                    
+                    messageDiv.className = 'message success';
+                    messageDiv.textContent = 'Login successful! Redirecting...';
+                    messageDiv.style.display = 'block';
+                    
+                    // Redirect to messages page
+                    setTimeout(() => {
+                        window.location.href = '/messages';
+                    }, 1000);
+                } else {
+                    messageDiv.className = 'message error';
+                    messageDiv.textContent = data.error.message || 'Login failed';
+                    messageDiv.style.display = 'block';
+                }
+            } catch (error) {
+                messageDiv.className = 'message error';
+                messageDiv.textContent = 'Network error. Please try again.';
+                messageDiv.style.display = 'block';
+            } finally {
+                // Reset button state
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Login';
+                spinner.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>`;
+    
+    return new Response(html, {
+        headers: { ...corsHeaders, 'Content-Type': 'text/html' }
+    });
+}
+
+async function handleMessagesPage(corsHeaders: Record<string, string>): Promise<Response> {
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Messages - Email Bridge</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+        }
+
+        .header {
+            background-color: white;
+            border-bottom: 1px solid #e0e0e0;
+            padding: 20px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 24px;
+            color: #333;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .username {
+            color: #666;
+            font-weight: 500;
+        }
+
+        .logout-btn {
+            padding: 8px 16px;
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+
+        .logout-btn:hover {
+            background-color: #c82333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .messages-container {
+            display: flex;
+            gap: 20px;
+            height: calc(100vh - 120px);
+        }
+
+        .messages-list {
+            flex: 1;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .list-header {
+            padding: 20px;
+            border-bottom: 1px solid #e0e0e0;
+            background-color: #f8f9fa;
+        }
+
+        .refresh-btn {
+            padding: 8px 16px;
+            background-color: #0066cc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background-color 0.3s;
+        }
+
+        .refresh-btn:hover {
+            background-color: #0052a3;
+        }
+
+        .refresh-btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        .messages-content {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .message-item {
+            padding: 15px 20px;
+            border-bottom: 1px solid #e0e0e0;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .message-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .message-item.selected {
+            background-color: #e3f2fd;
+        }
+
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .message-from {
+            font-weight: 600;
+            color: #333;
+            flex: 1;
+            margin-right: 10px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .message-date {
+            color: #666;
+            font-size: 14px;
+            white-space: nowrap;
+        }
+
+        .message-subject {
+            color: #555;
+            font-weight: 500;
+            margin-bottom: 4px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .message-preview {
+            color: #666;
+            font-size: 14px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .message-detail {
+            flex: 2;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .detail-placeholder {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: #666;
+            font-size: 18px;
+        }
+
+        .detail-header {
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+        }
+
+        .detail-subject {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .detail-meta {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .detail-body {
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .detail-body pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: inherit;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .error {
+            text-align: center;
+            padding: 20px;
+            color: #dc3545;
+        }
+
+        .no-messages {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #0066cc;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 768px) {
+            .messages-container {
+                flex-direction: column;
+            }
+            
+            .message-detail {
+                display: none;
+            }
+            
+            .message-detail.mobile-visible {
+                display: block;
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                z-index: 200;
+                border-radius: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <h1>Email Messages</h1>
+            <div class="user-info">
+                <span class="username" id="username"></span>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="messages-container">
+            <div class="messages-list">
+                <div class="list-header">
+                    <button class="refresh-btn" id="refreshBtn" onclick="loadMessages()">
+                        <span id="refreshText">Refresh</span>
+                    </button>
+                </div>
+                <div class="messages-content" id="messagesList">
+                    <div class="loading">Loading messages...</div>
+                </div>
+            </div>
+            
+            <div class="message-detail" id="messageDetail">
+                <div class="detail-placeholder">Select a message to view</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentMessages = [];
+        let selectedMessageId = null;
+        let authToken = localStorage.getItem('authToken');
+        let username = localStorage.getItem('username');
+
+        // Check authentication
+        if (!authToken) {
+            window.location.href = '/login';
+        }
+
+        // Display username
+        document.getElementById('username').textContent = username || 'User';
+
+        // Load messages on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            loadMessages();
+        });
+
+        async function loadMessages() {
+            const refreshBtn = document.getElementById('refreshBtn');
+            const refreshText = document.getElementById('refreshText');
+            const messagesList = document.getElementById('messagesList');
+            
+            refreshBtn.disabled = true;
+            refreshText.innerHTML = '<span class="spinner"></span>Loading...';
+            
+            try {
+                const response = await fetch('/api/v1/messages', {
+                    headers: {
+                        'Authorization': \`Bearer \${authToken}\`
+                    }
+                });
+                
+                if (response.status === 401) {
+                    // Token expired or invalid
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('username');
+                    window.location.href = '/login';
+                    return;
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentMessages = data.data.messages;
+                    displayMessages();
+                } else {
+                    messagesList.innerHTML = \`<div class="error">Error: \${data.error.message}</div>\`;
+                }
+            } catch (error) {
+                messagesList.innerHTML = '<div class="error">Failed to load messages. Please try again.</div>';
+            } finally {
+                refreshBtn.disabled = false;
+                refreshText.textContent = 'Refresh';
+            }
+        }
+
+        function displayMessages() {
+            const messagesList = document.getElementById('messagesList');
+            
+            if (currentMessages.length === 0) {
+                messagesList.innerHTML = '<div class="no-messages">No messages yet</div>';
+                return;
+            }
+            
+            messagesList.innerHTML = currentMessages.map(msg => \`
+                <div class="message-item" onclick="selectMessage(\${msg.id})" data-id="\${msg.id}">
+                    <div class="message-header">
+                        <div class="message-from">\${escapeHtml(msg.from)}</div>
+                        <div class="message-date">\${formatDate(msg.received_at)}</div>
+                    </div>
+                    <div class="message-subject">\${escapeHtml(msg.subject || '(No subject)')}</div>
+                    <div class="message-preview">\${escapeHtml(getPreview(msg.body_text))}</div>
+                </div>
+            \`).join('');
+        }
+
+        function selectMessage(messageId) {
+            // Update selected state
+            document.querySelectorAll('.message-item').forEach(item => {
+                item.classList.toggle('selected', item.dataset.id === messageId.toString());
+            });
+            
+            selectedMessageId = messageId;
+            const message = currentMessages.find(m => m.id === messageId);
+            
+            if (message) {
+                displayMessageDetail(message);
+            }
+        }
+
+        function displayMessageDetail(message) {
+            const messageDetail = document.getElementById('messageDetail');
+            
+            const bodyContent = message.body_html || 
+                               (message.body_text ? \`<pre>\${escapeHtml(message.body_text)}</pre>\` : 
+                               '<p>No content available</p>');
+            
+            messageDetail.innerHTML = \`
+                <div class="detail-header">
+                    <div class="detail-subject">\${escapeHtml(message.subject || '(No subject)')}</div>
+                    <div class="detail-meta">
+                        <div><strong>From:</strong> \${escapeHtml(message.from)}</div>
+                        <div><strong>Date:</strong> \${formatDateTime(message.received_at)}</div>
+                        \${message.size ? \`<div><strong>Size:</strong> \${formatSize(message.size)}</div>\` : ''}
+                    </div>
+                </div>
+                <div class="detail-body">
+                    \${message.body_html ? message.body_html : bodyContent}
+                </div>
+            \`;
+        }
+
+        function logout() {
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('username');
+            window.location.href = '/login';
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text || '';
+            return div.innerHTML;
+        }
+
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            const now = new Date();
+            const diffTime = Math.abs(now - date);
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays === 0) {
+                return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            } else if (diffDays < 7) {
+                return date.toLocaleDateString('en-US', { weekday: 'short' });
+            } else {
+                return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            }
+        }
+
+        function formatDateTime(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleString('en-US', { 
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function formatSize(bytes) {
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            if (bytes === 0) return '0 Bytes';
+            const i = Math.floor(Math.log(bytes) / Math.log(1024));
+            return Math.round(bytes / Math.pow(1024, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        function getPreview(text) {
+            if (!text) return '';
+            return text.substring(0, 100).replace(/\\n/g, ' ');
+        }
+    </script>
+</body>
+</html>`;
+    
+    return new Response(html, {
+        headers: { ...corsHeaders, 'Content-Type': 'text/html' }
+    });
 }
 
 function createErrorResponse(
