@@ -116,7 +116,7 @@ wrangler auth login
 
 ```bash
 # Create production database
-wrangler d1 create email-queue
+wrangler d1 create emails
 
 # Update wrangler.jsonc with returned database_id
 # Copy the database_id to wrangler.jsonc -> d1_databases[0].database_id
@@ -154,7 +154,7 @@ wrangler email route create "*@agent.tai.chat" cf-mail-bridge
 
 ```bash
 # Initialize production database
-wrangler d1 execute email-queue --file=./schema.sql --remote
+wrangler d1 execute emails --file=./schema.sql --remote
 
 # Deploy worker
 npm run deploy
@@ -453,7 +453,7 @@ auth.hashPassword('test').then(console.log);
 npm run logs-prod
 
 # Check production database
-wrangler d1 execute email-queue --command="SELECT COUNT(*) FROM messages;" --remote
+wrangler d1 execute emails --command="SELECT COUNT(*) FROM messages;" --remote
 
 # Monitor performance
 wrangler analytics
@@ -469,7 +469,7 @@ wrangler analytics
 wrangler d1 list
 
 # Recreate if missing
-wrangler d1 create email-queue
+wrangler d1 create emails
 npm run db-init
 ```
 

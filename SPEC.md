@@ -231,7 +231,7 @@ Authorization: Bearer <jwt-token>
     "d1_databases": [
         {
             "binding": "DB",
-            "database_name": "email-queue",
+            "database_name": "emails",
             "database_id": "your-database-id"
         }
     ],
@@ -277,8 +277,8 @@ interface Env {
 ## 9. Deployment Steps
 
 1. Install dependencies: `npm install`
-2. Create database: `wrangler d1 create email-queue`
-3. Run migrations: `wrangler d1 execute email-queue --file=./migrations/schema.sql`
+2. Create database: `wrangler d1 create emails`
+3. Run migrations: `wrangler d1 execute emails --file=./migrations/schema.sql`
 4. Configure environment variables (set JWT_SECRET in wrangler.jsonc)
 5. Deploy: `wrangler deploy`
 
