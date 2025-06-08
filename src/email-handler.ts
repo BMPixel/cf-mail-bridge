@@ -1,9 +1,18 @@
 import { EmailMessage } from './types';
 import { DatabaseService } from './database';
 import PostalMime from 'postal-mime';
+import * as TurndownService from 'turndown';
 
 export class EmailHandler {
-    constructor(private dbService: DatabaseService) {}
+    private turndownService: any;
+
+    constructor(private dbService: DatabaseService) {
+        this.turndownService = new (TurndownService as any)({
+            headingStyle: 'atx',
+            codeBlockStyle: 'fenced',
+            bulletListMarker: '-'
+        });
+    }
 
     async handleIncomingEmail(message: EmailMessage): Promise<boolean> {
         try {
@@ -85,10 +94,25 @@ export class EmailHandler {
         text: string | null;
         html: string | null;
     } {
+        const cleanedHtml = this.cleanHtml(message.html);
+        let textContent: string | null = null;
+
+        // Convert HTML to markdown if HTML is available, otherwise use plain text
+        if (cleanedHtml) {
+            try {
+                textContent = this.turndownService.turndown(cleanedHtml);
+            } catch (error) {
+                console.warn('[EMAIL] Failed to convert HTML to markdown:', error);
+                textContent = this.cleanText(message.text) || null;
+            }
+        } else {
+            textContent = this.cleanText(message.text) || null;
+        }
+
         return {
             subject: this.cleanText(message.subject) || null,
-            text: this.cleanText(message.text) || null,
-            html: this.cleanHtml(message.html) || null
+            text: textContent,
+            html: cleanedHtml
         };
     }
 

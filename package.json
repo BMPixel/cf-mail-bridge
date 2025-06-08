@@ -19,10 +19,12 @@
 	},
 	"dependencies": {
 		"jose": "^5.2.0",
-		"postal-mime": "^2.3.2"
+		"postal-mime": "^2.3.2",
+		"turndown": "^7.2.0"
 	},
 	"devDependencies": {
 		"@types/node": "^20.11.0",
+		"@types/turndown": "^5.0.5",
 		"typescript": "^5.5.2",
 		"wrangler": "^4.19.1"
 	}
