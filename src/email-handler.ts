@@ -2,14 +2,14 @@ import { EmailMessage, ResendEmailOptions, EmailSendResult, Env } from './types'
 import { DatabaseService } from './database';
 import { getResendService, ResendEmailService } from './resend-service';
 import PostalMime from 'postal-mime';
-import * as TurndownService from 'turndown';
+import TurndownService from 'turndown';
 
 export class EmailHandler {
     private turndownService: any;
     private resendService: ResendEmailService;
 
     constructor(private dbService: DatabaseService, private env?: Env) {
-        this.turndownService = new (TurndownService as any)({
+        this.turndownService = new TurndownService({
             headingStyle: 'atx',
             codeBlockStyle: 'fenced',
             bulletListMarker: '-'
