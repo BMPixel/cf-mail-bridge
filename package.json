@@ -6,9 +6,22 @@
 		"deploy": "wrangler deploy",
 		"dev": "wrangler dev",
 		"start": "wrangler dev",
-		"cf-typegen": "wrangler types"
+		"cf-typegen": "wrangler types",
+		"test": "npm run dev -- --test",
+		"test-api": "node test-api.js",
+		"test-api-dev": "TEST_URL=http://localhost:8787 node test-api.js",
+		"test-email": "node test-email-handler.js",
+		"test-email-dev": "TEST_URL=http://localhost:8787 node test-email-handler.js",
+		"db-init": "wrangler d1 execute mails --file=./schema.sql",
+		"db-reset": "wrangler d1 execute mails --command='DROP TABLE IF EXISTS messages; DROP TABLE IF EXISTS users;' && npm run db-init",
+		"logs": "wrangler tail",
+		"logs-prod": "wrangler tail --env production"
+	},
+	"dependencies": {
+		"jose": "^5.2.0"
 	},
 	"devDependencies": {
+		"@types/node": "^20.11.0",
 		"typescript": "^5.5.2",
 		"wrangler": "^4.19.1"
 	}

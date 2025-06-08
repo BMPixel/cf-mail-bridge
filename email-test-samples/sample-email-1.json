@@ -1,0 +1,16 @@
+{
+  "from": "sender@example.com",
+  "to": "testuser@agent.tai.chat", 
+  "subject": "Test Email #1",
+  "text": "This is a plain text test message.\n\nBest regards,\nTest Sender",
+  "html": "<html><body><p>This is an <strong>HTML</strong> test message.</p><p>Best regards,<br>Test Sender</p></body></html>",
+  "headers": {
+    "Message-ID": "test-message-001@example.com",
+    "Date": "Wed, 08 Jun 2025 10:00:00 +0000",
+    "From": "Test Sender <sender@example.com>",
+    "To": "testuser@agent.tai.chat",
+    "Subject": "Test Email #1",
+    "Content-Type": "multipart/alternative"
+  },
+  "size": 512
+}

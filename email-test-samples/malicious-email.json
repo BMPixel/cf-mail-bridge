@@ -1,0 +1,16 @@
+{
+  "from": "attacker@malicious.com",
+  "to": "victim@agent.tai.chat",
+  "subject": "Security Test - XSS Attempt",
+  "text": "This is a security test email with potentially malicious content in the HTML version.",
+  "html": "<html><body><p>Hello!</p><script>alert('XSS Attack!');</script><iframe src='javascript:alert(\"XSS\")'></iframe><p onclick='alert(\"Click XSS\")'>Click me</p><img src='x' onerror='alert(\"Image XSS\")'><p>This should be cleaned by our sanitizer.</p></body></html>",
+  "headers": {
+    "Message-ID": "security-test-001@malicious.com",
+    "Date": "Wed, 08 Jun 2025 11:00:00 +0000",
+    "From": "Attacker <attacker@malicious.com>",
+    "To": "victim@agent.tai.chat",
+    "Subject": "Security Test - XSS Attempt",
+    "Content-Type": "text/html; charset=utf-8"
+  },
+  "size": 768
+}

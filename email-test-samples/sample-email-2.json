@@ -1,0 +1,17 @@
+{
+  "from": "newsletter@company.com",
+  "to": "johndoe@agent.tai.chat",
+  "subject": "🚀 Weekly Newsletter - Important Updates",
+  "text": "Hello John,\n\nHere are this week's important updates:\n\n1. New feature released\n2. Bug fixes deployed\n3. Performance improvements\n\nThanks for using our service!\n\nThe Team",
+  "html": "<html><body><h1>🚀 Weekly Newsletter</h1><p>Hello John,</p><p>Here are this week's important updates:</p><ol><li>New feature released</li><li>Bug fixes deployed</li><li>Performance improvements</li></ol><p>Thanks for using our service!</p><p><em>The Team</em></p></body></html>",
+  "headers": {
+    "Message-ID": "newsletter-20250608@company.com",
+    "Date": "Wed, 08 Jun 2025 09:30:00 +0000",
+    "From": "Company Newsletter <newsletter@company.com>",
+    "To": "johndoe@agent.tai.chat",
+    "Subject": "🚀 Weekly Newsletter - Important Updates",
+    "Content-Type": "text/html; charset=utf-8",
+    "List-Unsubscribe": "<mailto:unsubscribe@company.com>"
+  },
+  "size": 1024
+}

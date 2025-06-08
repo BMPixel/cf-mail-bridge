@@ -7,33 +7,20 @@
 	"name": "cf-mail-bridge",
 	"main": "src/index.ts",
 	"compatibility_date": "2025-06-07",
-	"migrations": [
-		{
-			"new_sqlite_classes": [
-				"MyDurableObject"
-			],
-			"tag": "v1"
-		}
-	],
-	"assets": {
-		"directory": "./public"
-	},
-	"durable_objects": {
-		"bindings": [
-			{
-				"class_name": "MyDurableObject",
-				"name": "MY_DURABLE_OBJECT"
-			}
-		]
-	},
-	"observability": {
-		"enabled": true
+	"vars": {
+		"JWT_SECRET": "your-secret-key-here-change-in-production"
 	},
 	"d1_databases": [
 		{
 			"binding": "DB",
 			"database_name": "mails",
 			"database_id": "89cb42ac-d551-4143-80fa-25b865303a4c"
+		}
+	],
+	"send_email": [
+		{
+			"name": "SEB",
+			"destination_address": "*@agent.tai.chat"
 		}
 	]
 	/**
