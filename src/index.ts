@@ -1249,26 +1249,7 @@ async function handleSendTestEmail(
             to: to,
             subject: subject || 'Test Email from CF Mail Bridge',
             text: message || 'This is a test email sent from the Cloudflare Mail Bridge service using Resend.',
-            html: html || `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                    <h2 style="color: #333;">🎉 Test Email Success!</h2>
-                    <p>This is a test email sent from the <strong>Cloudflare Mail Bridge</strong> service using <strong>Resend</strong>.</p>
-                    <div style="background: #f5f5f5; padding: 20px; margin: 20px 0; border-radius: 5px;">
-                        <h3>Service Information:</h3>
-                        <ul>
-                            <li><strong>Service:</strong> CF Mail Bridge</li>
-                            <li><strong>Email Provider:</strong> Resend</li>
-                            <li><strong>Domain:</strong> agent.tai.chat</li>
-                            <li><strong>Timestamp:</strong> ${new Date().toISOString()}</li>
-                        </ul>
-                    </div>
-                    <p>If you received this email, the Resend integration is working correctly! 🚀</p>
-                    <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
-                    <p style="color: #666; font-size: 12px;">
-                        This email was sent via the CF Mail Bridge service for testing purposes.
-                    </p>
-                </div>
-            `,
+            html: html || createTestEmailHTML(),
             tags: [{ name: 'type', value: 'test' }]
         };
         
@@ -1296,6 +1277,28 @@ async function handleSendTestEmail(
         console.error('[SEND_EMAIL] Error processing request:', error);
         return createErrorResponse(ErrorCode.INTERNAL_ERROR, 'Failed to process email request', 500, corsHeaders);
     }
+}
+
+function createTestEmailHTML(): string {
+    const timestamp = new Date().toISOString();
+    return `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+    <h2 style="color: #333;">🎉 Test Email Success!</h2>
+    <p>This is a test email sent from the <strong>Cloudflare Mail Bridge</strong> service using <strong>Resend</strong>.</p>
+    <div style="background: #f5f5f5; padding: 20px; margin: 20px 0; border-radius: 5px;">
+        <h3>Service Information:</h3>
+        <ul>
+            <li><strong>Service:</strong> CF Mail Bridge</li>
+            <li><strong>Email Provider:</strong> Resend</li>
+            <li><strong>Domain:</strong> agent.tai.chat</li>
+            <li><strong>Timestamp:</strong> ${timestamp}</li>
+        </ul>
+    </div>
+    <p>If you received this email, the Resend integration is working correctly! 🚀</p>
+    <hr style="margin: 30px 0; border: none; border-top: 1px solid #eee;">
+    <p style="color: #666; font-size: 12px;">
+        This email was sent via the CF Mail Bridge service for testing purposes.
+    </p>
+</div>`;
 }
 
 function createErrorResponse(
