@@ -9,11 +9,18 @@ export class EmailHandler {
     private resendService: ResendEmailService;
 
     constructor(private dbService: DatabaseService, private env?: Env) {
-        this.turndownService = new TurndownService({
-            headingStyle: 'atx',
-            codeBlockStyle: 'fenced',
-            bulletListMarker: '-'
-        });
+        // Initialize TurndownService with error handling for Cloudflare Workers
+        try {
+            this.turndownService = new TurndownService({
+                headingStyle: 'atx',
+                codeBlockStyle: 'fenced',
+                bulletListMarker: '-'
+            });
+            console.log('[EMAIL] TurndownService initialized successfully');
+        } catch (error) {
+            console.warn('[EMAIL] TurndownService initialization failed:', error);
+            this.turndownService = null;
+        }
         
         // Initialize Resend service if API key is available
         this.resendService = getResendService(env?.RESEND_API_KEY);
@@ -81,13 +88,25 @@ export class EmailHandler {
                 return null;
             }
 
-            const username = parts[0].toLowerCase().trim();
+            const fullUsername = parts[0].toLowerCase().trim();
             
-            // Validate username format
+            // Extract base username from prefix format (e.g., desktop.wenbo -> wenbo)
+            // Support formats: prefix.username@tai.chat or just username@tai.chat
+            let username = fullUsername;
+            
+            // Check if there's a prefix (contains a dot)
+            if (fullUsername.includes('.')) {
+                const prefixParts = fullUsername.split('.');
+                // Take the last part as the username (e.g., desktop.wenbo -> wenbo)
+                username = prefixParts[prefixParts.length - 1];
+            }
+            
+            // Validate username format (alphanumeric and hyphens only)
             if (!/^[a-z0-9-]+$/.test(username)) {
                 return null;
             }
 
+            console.log(`[EMAIL] Extracted username '${username}' from email '${email}'`);
             return username;
         } catch (error) {
             return null;
@@ -105,10 +124,17 @@ export class EmailHandler {
         // Convert HTML to markdown if HTML is available, otherwise use plain text
         if (cleanedHtml) {
             try {
-                textContent = this.turndownService.turndown(cleanedHtml);
+                if (this.turndownService) {
+                    textContent = this.turndownService.turndown(cleanedHtml);
+                    console.log('[EMAIL] HTML to markdown conversion successful');
+                } else {
+                    console.warn('[EMAIL] TurndownService not available, using HTML stripping fallback');
+                    textContent = this.htmlToTextFallback(cleanedHtml);
+                }
             } catch (error) {
                 console.warn('[EMAIL] Failed to convert HTML to markdown:', error);
-                textContent = this.cleanText(message.text) || null;
+                console.log('[EMAIL] Attempting HTML stripping fallback');
+                textContent = this.htmlToTextFallback(cleanedHtml) || this.cleanText(message.text) || null;
             }
         } else {
             textContent = this.cleanText(message.text) || null;
@@ -139,6 +165,111 @@ export class EmailHandler {
         
         // Return HTML content as-is without sanitization
         return html.trim() || null;
+    }
+
+    private htmlToTextFallback(html: string): string | null {
+        if (!html) return null;
+        
+        console.log('[EMAIL] Using HTML to text fallback conversion');
+        
+        try {
+            // Basic HTML stripping fallback when TurndownService is not available
+            let text = html
+                // First, handle code blocks BEFORE other conversions to preserve formatting
+                .replace(/<pre[^>]*><code[^>]*class=["']language-([^"']*)["'][^>]*>(.*?)<\/code><\/pre>/gis, (match, lang, code) => {
+                    // Code block with language - decode entities and clean
+                    const cleanCode = code
+                        .replace(/<[^>]*>/g, '')
+                        .replace(/&nbsp;/g, ' ')
+                        .replace(/&amp;/g, '&')
+                        .replace(/&lt;/g, '<')
+                        .replace(/&gt;/g, '>')
+                        .replace(/&quot;/g, '"')
+                        .replace(/&#39;/g, "'")
+                        .trim();
+                    return `\n\`\`\`${lang}\n${cleanCode}\n\`\`\`\n`;
+                })
+                .replace(/<pre[^>]*><code[^>]*>(.*?)<\/code><\/pre>/gis, (match, code) => {
+                    // Code block without language - decode entities and clean
+                    const cleanCode = code
+                        .replace(/<[^>]*>/g, '')
+                        .replace(/&nbsp;/g, ' ')
+                        .replace(/&amp;/g, '&')
+                        .replace(/&lt;/g, '<')
+                        .replace(/&gt;/g, '>')
+                        .replace(/&quot;/g, '"')
+                        .replace(/&#39;/g, "'")
+                        .trim();
+                    return `\n\`\`\`\n${cleanCode}\n\`\`\`\n`;
+                })
+                .replace(/<pre[^>]*>(.*?)<\/pre>/gis, (match, code) => {
+                    // Plain pre block (fallback) - decode entities and clean
+                    const cleanCode = code
+                        .replace(/<[^>]*>/g, '')
+                        .replace(/&nbsp;/g, ' ')
+                        .replace(/&amp;/g, '&')
+                        .replace(/&lt;/g, '<')
+                        .replace(/&gt;/g, '>')
+                        .replace(/&quot;/g, '"')
+                        .replace(/&#39;/g, "'")
+                        .trim();
+                    return `\n\`\`\`\n${cleanCode}\n\`\`\`\n`;
+                })
+                
+                // Convert common block elements to line breaks
+                .replace(/<\/?(p|div|br|h[1-6]|li|tr|td|th)[^>]*>/gi, '\n')
+                .replace(/<\/?(ul|ol|table)[^>]*>/gi, '\n\n')
+                .replace(/<hr[^>]*>/gi, '\n---\n')
+                
+                // Convert basic formatting (inline code AFTER code blocks)
+                .replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**')
+                .replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**')
+                .replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*')
+                .replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*')
+                .replace(/<code[^>]*>(.*?)<\/code>/gi, '`$1`')
+                
+                // Convert monospace elements
+                .replace(/<(tt|kbd|samp)[^>]*>(.*?)<\/\1>/gi, '`$2`')
+                
+                // Convert links
+                .replace(/<a[^>]*href=["']([^"']*)["'][^>]*>(.*?)<\/a>/gi, '[$2]($1)')
+                
+                // Convert headings
+                .replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n')
+                .replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n')
+                .replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n')
+                .replace(/<h4[^>]*>(.*?)<\/h4>/gi, '#### $1\n')
+                .replace(/<h5[^>]*>(.*?)<\/h5>/gi, '##### $1\n')
+                .replace(/<h6[^>]*>(.*?)<\/h6>/gi, '###### $1\n')
+                
+                // Decode common HTML entities first (before removing tags)
+                .replace(/&nbsp;/g, ' ')
+                .replace(/&amp;/g, '&')
+                .replace(/&lt;/g, '&TEMP_LT;') // Temporary replacement to avoid conflict
+                .replace(/&gt;/g, '&TEMP_GT;') // Temporary replacement to avoid conflict
+                .replace(/&quot;/g, '"')
+                .replace(/&#39;/g, "'")
+                .replace(/&hellip;/g, '...')
+                
+                // Remove all HTML tags
+                .replace(/<[^>]*>/g, '')
+                
+                // Restore the temporary replacements
+                .replace(/&TEMP_LT;/g, '<')
+                .replace(/&TEMP_GT;/g, '>')
+                
+                // Clean up whitespace
+                .replace(/\n\s*\n\s*\n/g, '\n\n') // Multiple line breaks to double
+                .replace(/[ \t]+/g, ' ') // Multiple spaces to single space
+                .trim();
+            
+            console.log('[EMAIL] HTML fallback conversion completed');
+            return text || null;
+            
+        } catch (error) {
+            console.error('[EMAIL] HTML fallback conversion failed:', error);
+            return null;
+        }
     }
 
     private generateMessageId(): string {
@@ -267,8 +398,8 @@ export class EmailHandler {
             return false;
         }
 
-        // Check if it's for our domain (agent.tai.chat)
-        if (!email.to.endsWith('@agent.tai.chat')) {
+        // Check if it's for our domain (tai.chat)
+        if (!email.to.endsWith('@tai.chat')) {
             return false;
         }
 
@@ -310,7 +441,7 @@ export class EmailHandler {
                 : `Re: ${originalMessage.subject || 'No Subject'}`;
 
             const emailOptions: ResendEmailOptions = {
-                from: 'noreply@agent.tai.chat', // Default reply address
+                from: 'noreply@tai.chat', // Default reply address
                 to: originalMessage.from,
                 subject: subject,
                 text: replyContent,
@@ -336,7 +467,7 @@ export class EmailHandler {
     async sendNotification(to: string, subject: string, message: string, messageHtml?: string): Promise<EmailSendResult> {
         try {
             const emailOptions: ResendEmailOptions = {
-                from: 'notifications@agent.tai.chat', // Default notification address
+                from: 'notifications@tai.chat', // Default notification address
                 to: to,
                 subject: subject,
                 text: message,

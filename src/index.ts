@@ -27,7 +27,7 @@ export default {
             // CORS headers for all responses
             const corsHeaders = {
                 'Access-Control-Allow-Origin': '*',
-                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
                 'Access-Control-Allow-Headers': 'Content-Type, Authorization',
             };
 
@@ -98,6 +98,16 @@ export default {
                 return handleGetMessage(request, authService, dbService, messageId, corsHeaders);
             }
 
+            if (path.startsWith('/api/v1/messages/') && method === 'DELETE') {
+                const messageId = path.split('/').pop();
+                return handleDeleteMessage(request, authService, dbService, messageId, corsHeaders);
+            }
+
+            if (path.match(/^\/api\/v1\/messages\/\d+\/read$/) && method === 'PUT') {
+                const messageId = path.split('/')[4]; // Extract ID from /api/v1/messages/{id}/read
+                return handleMarkAsRead(request, authService, dbService, messageId, corsHeaders);
+            }
+
             if (path === '/api/v1/send-test-email' && method === 'POST') {
                 return handleSendTestEmail(request, emailHandler, corsHeaders);
             }
@@ -160,7 +170,11 @@ async function handleHomepage(corsHeaders: Record<string, string>): Promise<Resp
             <ul>
                 <li><strong>POST /api/v1/register</strong> - Register a new user</li>
                 <li><strong>POST /api/v1/login</strong> - User login</li>
-                <li><strong>GET /api/v1/messages</strong> - Get message list (requires auth)</li>
+                <li><strong>GET /api/v1/messages</strong> - Get message list (requires auth)
+                    <br><small>Query params: limit, offset</small>
+                </li>
+                <li><strong>DELETE /api/v1/messages/{id}</strong> - Delete a message (requires auth)</li>
+                <li><strong>PUT /api/v1/messages/{id}/read</strong> - Mark a message as read (requires auth)</li>
                 <li><strong>GET /health</strong> - Health check</li>
             </ul>
         </div>
@@ -305,7 +319,7 @@ async function handleRegister(
             success: true,
             data: {
                 username: body.username,
-                email: `${body.username}@agent.tai.chat`,
+                email: `${body.username}@tai.chat`,
                 token
             }
         };
@@ -503,6 +517,108 @@ async function handleGetMessage(
         
     } catch (error) {
         return createErrorResponse(ErrorCode.INTERNAL_ERROR, 'Failed to retrieve message', 500, corsHeaders);
+    }
+}
+
+async function handleDeleteMessage(
+    request: Request,
+    authService: AuthService,
+    dbService: DatabaseService,
+    messageId: string | undefined,
+    corsHeaders: Record<string, string>
+): Promise<Response> {
+    try {
+        if (!messageId || isNaN(parseInt(messageId))) {
+            return createErrorResponse(ErrorCode.INVALID_REQUEST, 'Invalid message ID', 400, corsHeaders);
+        }
+        
+        const authHeader = request.headers.get('Authorization');
+        const token = authService.extractTokenFromHeader(authHeader);
+        
+        if (!token) {
+            return createErrorResponse(ErrorCode.UNAUTHORIZED, 'Missing or invalid token', 401, corsHeaders);
+        }
+        
+        const payload = await authService.verifyToken(token);
+        if (!payload) {
+            return createErrorResponse(ErrorCode.UNAUTHORIZED, 'Invalid token', 401, corsHeaders);
+        }
+        
+        // Get user
+        const user = await dbService.getUserByUsername(payload.sub);
+        if (!user) {
+            return createErrorResponse(ErrorCode.UNAUTHORIZED, 'User not found', 401, corsHeaders);
+        }
+        
+        // Delete message
+        const deleted = await dbService.deleteMessage(parseInt(messageId), user.id);
+        if (!deleted) {
+            return createErrorResponse(ErrorCode.NOT_FOUND, 'Message not found or could not be deleted', 404, corsHeaders);
+        }
+        
+        return new Response(JSON.stringify({
+            success: true,
+            data: {
+                message: 'Message deleted successfully',
+                id: parseInt(messageId)
+            }
+        }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+        
+    } catch (error) {
+        return createErrorResponse(ErrorCode.INTERNAL_ERROR, 'Failed to delete message', 500, corsHeaders);
+    }
+}
+
+async function handleMarkAsRead(
+    request: Request,
+    authService: AuthService,
+    dbService: DatabaseService,
+    messageId: string | undefined,
+    corsHeaders: Record<string, string>
+): Promise<Response> {
+    try {
+        if (!messageId || isNaN(parseInt(messageId))) {
+            return createErrorResponse(ErrorCode.INVALID_REQUEST, 'Invalid message ID', 400, corsHeaders);
+        }
+        
+        const authHeader = request.headers.get('Authorization');
+        const token = authService.extractTokenFromHeader(authHeader);
+        
+        if (!token) {
+            return createErrorResponse(ErrorCode.UNAUTHORIZED, 'Missing or invalid token', 401, corsHeaders);
+        }
+        
+        const payload = await authService.verifyToken(token);
+        if (!payload) {
+            return createErrorResponse(ErrorCode.UNAUTHORIZED, 'Invalid token', 401, corsHeaders);
+        }
+        
+        // Get user
+        const user = await dbService.getUserByUsername(payload.sub);
+        if (!user) {
+            return createErrorResponse(ErrorCode.UNAUTHORIZED, 'User not found', 401, corsHeaders);
+        }
+        
+        // Mark message as read
+        const marked = await dbService.markMessageAsRead(parseInt(messageId), user.id);
+        if (!marked) {
+            return createErrorResponse(ErrorCode.NOT_FOUND, 'Message not found or could not be marked as read', 404, corsHeaders);
+        }
+        
+        return new Response(JSON.stringify({
+            success: true,
+            data: {
+                message: 'Message marked as read',
+                id: parseInt(messageId)
+            }
+        }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+        
+    } catch (error) {
+        return createErrorResponse(ErrorCode.INTERNAL_ERROR, 'Failed to mark message as read', 500, corsHeaders);
     }
 }
 
@@ -1245,7 +1361,7 @@ async function handleSendTestEmail(
         console.log(`[SEND_EMAIL] Sending test email to: ${to}`);
         
         const emailOptions = {
-            from: 'noreply@agent.tai.chat',
+            from: 'noreply@tai.chat',
             to: to,
             subject: subject || 'Test Email from CF Mail Bridge',
             text: message || 'This is a test email sent from the Cloudflare Mail Bridge service using Resend.',
@@ -1289,7 +1405,7 @@ function createTestEmailHTML(): string {
         <ul>
             <li><strong>Service:</strong> CF Mail Bridge</li>
             <li><strong>Email Provider:</strong> Resend</li>
-            <li><strong>Domain:</strong> agent.tai.chat</li>
+            <li><strong>Domain:</strong> tai.chat</li>
             <li><strong>Timestamp:</strong> ${timestamp}</li>
         </ul>
     </div>
@@ -1300,6 +1416,7 @@ function createTestEmailHTML(): string {
     </p>
 </div>`;
 }
+
 
 function createErrorResponse(
     code: string,

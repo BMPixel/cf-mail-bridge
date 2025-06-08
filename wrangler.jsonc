@@ -21,7 +21,7 @@
 	"send_email": [
 		{
 			"name": "SEB",
-			"destination_address": "*@agent.tai.chat"
+			"destination_address": "*@tai.chat"
 		}
 	],
 	"observability": {

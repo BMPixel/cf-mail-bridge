@@ -67,11 +67,11 @@ export class DatabaseService {
             const result = await this.db.prepare(`
                 INSERT INTO messages (
                     user_id, message_id, from_address, to_address,
-                    subject, body_text, body_html, raw_headers, raw_size
+                    subject, body_text, body_html, raw_headers, raw_size, is_read
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, FALSE)
                 RETURNING id, user_id, message_id, from_address, to_address,
-                         subject, body_text, body_html, raw_headers, raw_size, received_at
+                         subject, body_text, body_html, raw_headers, raw_size, is_read, received_at
             `).bind(
                 userId, messageId, fromAddress, toAddress,
                 subject, bodyText, bodyHtml, rawHeaders, rawSize
@@ -104,7 +104,7 @@ export class DatabaseService {
             // Get messages with pagination
             const messages = await this.db.prepare(`
                 SELECT id, message_id, from_address as "from", subject,
-                       body_text, body_html, received_at, raw_size as size
+                       body_text, body_html, is_read, received_at, raw_size as size
                 FROM messages
                 WHERE user_id = ?
                 ORDER BY received_at DESC
@@ -132,7 +132,7 @@ export class DatabaseService {
         try {
             const message = await this.db.prepare(`
                 SELECT id, message_id, from_address as "from", subject,
-                       body_text, body_html, received_at, raw_size as size
+                       body_text, body_html, is_read, received_at, raw_size as size
                 FROM messages
                 WHERE id = ? AND user_id = ?
             `).bind(messageId, userId).first<MessageResponse>();
@@ -159,6 +159,35 @@ export class DatabaseService {
         } catch (error) {
             console.error('Transaction error:', error);
             return null;
+        }
+    }
+
+    async deleteMessage(messageId: number, userId: number): Promise<boolean> {
+        try {
+            const result = await this.db.prepare(`
+                DELETE FROM messages
+                WHERE id = ? AND user_id = ?
+            `).bind(messageId, userId).run();
+
+            return result.success && (result.meta?.changes || 0) > 0;
+        } catch (error) {
+            console.error('Error deleting message:', error);
+            return false;
+        }
+    }
+
+    async markMessageAsRead(messageId: number, userId: number): Promise<boolean> {
+        try {
+            const result = await this.db.prepare(`
+                UPDATE messages
+                SET is_read = TRUE
+                WHERE id = ? AND user_id = ?
+            `).bind(messageId, userId).run();
+
+            return result.success && (result.meta?.changes || 0) > 0;
+        } catch (error) {
+            console.error('Error marking message as read:', error);
+            return false;
         }
     }
 

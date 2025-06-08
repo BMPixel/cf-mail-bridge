@@ -21,9 +21,11 @@ CREATE TABLE messages (
     body_html TEXT,
     raw_headers TEXT,
     raw_size INTEGER,
+    is_read BOOLEAN DEFAULT FALSE,
     received_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
 CREATE INDEX idx_messages_user_id ON messages(user_id);
 CREATE INDEX idx_messages_received_at ON messages(received_at);
+CREATE INDEX idx_messages_is_read ON messages(is_read);

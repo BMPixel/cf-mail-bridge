@@ -23,6 +23,7 @@ export interface Message {
     body_html?: string;
     raw_headers?: string;
     raw_size?: number;
+    is_read?: boolean;
     received_at: string;
 }
 
@@ -33,6 +34,7 @@ export interface MessageResponse {
     subject?: string;
     body_text?: string;
     body_html?: string;
+    is_read?: boolean;
     received_at: string;
     size?: number;
 }
