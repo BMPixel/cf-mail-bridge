@@ -18,7 +18,8 @@
 		"logs-prod": "wrangler tail --env production"
 	},
 	"dependencies": {
-		"jose": "^5.2.0"
+		"jose": "^5.2.0",
+		"postal-mime": "^2.3.2"
 	},
 	"devDependencies": {
 		"@types/node": "^20.11.0",

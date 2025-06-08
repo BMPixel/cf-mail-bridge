@@ -1,5 +1,6 @@
 import { EmailMessage } from './types';
 import { DatabaseService } from './database';
+import { PostalMime } from 'postal-mime';
 
 export class EmailHandler {
     constructor(private dbService: DatabaseService) {}
@@ -134,7 +135,6 @@ export class EmailHandler {
     async processCloudflareEmail(message: any): Promise<boolean> {
         try {
             console.log('[EMAIL] Message object received');
-            console.log('[EMAIL] Message properties:', Object.keys(message));
             console.log('[EMAIL] Message from:', message.from);
             console.log('[EMAIL] Message to:', message.to);
             
@@ -142,78 +142,48 @@ export class EmailHandler {
             const from = message.from;
             const to = message.to;
             
-            // Get subject from headers
-            let subject: string | undefined;
-            let headers: Record<string, string> = {};
+            // Use postal-mime to parse the raw email stream
+            let emailContent: any;
             
-            if (message.headers && typeof message.headers.get === 'function') {
-                subject = message.headers.get('subject');
-                console.log('[EMAIL] Subject from headers:', subject);
+            try {
+                // Get the raw email stream
+                const rawEmail = new Response(message.raw);
+                const arrayBuffer = await rawEmail.arrayBuffer();
                 
-                // Try to get all headers
-                try {
-                    const headerEntries = message.headers.entries();
-                    for (const [key, value] of headerEntries) {
-                        headers[key.toLowerCase()] = value;
-                    }
-                } catch (e) {
-                    console.log('[EMAIL] Could not iterate headers');
-                }
-            }
-            
-            // Get email content using methods
-            let text: string | undefined;
-            let html: string | undefined;
-            
-            try {
-                if (typeof message.text === 'function') {
-                    text = await message.text();
-                    console.log('[EMAIL] Text content length:', text?.length || 0);
-                } else {
-                    console.log('[EMAIL] No text() method available');
-                }
+                console.log('[EMAIL] Raw email size:', arrayBuffer.byteLength);
+                
+                // Parse using postal-mime
+                const parser = new PostalMime();
+                emailContent = await parser.parse(arrayBuffer);
+                
+                console.log('[EMAIL] Parsed email content:', {
+                    hasText: !!emailContent.text,
+                    hasHtml: !!emailContent.html,
+                    subject: emailContent.subject,
+                    textLength: emailContent.text?.length || 0,
+                    htmlLength: emailContent.html?.length || 0
+                });
             } catch (error) {
-                console.error('[EMAIL] Error getting text content:', error);
+                console.error('[EMAIL] Error parsing email with postal-mime:', error);
+                return false;
             }
             
-            try {
-                if (typeof message.html === 'function') {
-                    html = await message.html();
-                    console.log('[EMAIL] HTML content length:', html?.length || 0);
-                } else {
-                    console.log('[EMAIL] No html() method available');
-                }
-            } catch (error) {
-                console.error('[EMAIL] Error getting HTML content:', error);
-            }
-            
-            // Fallback: try to get content from raw message if methods don't work
-            if (!text && !html) {
-                console.log('[EMAIL] No content from methods, trying raw access');
-                if (typeof message.raw === 'function') {
-                    try {
-                        const rawContent = await message.raw();
-                        console.log('[EMAIL] Raw content length:', rawContent?.length || 0);
-                        if (rawContent) {
-                            const parsed = this.parseRawEmail(rawContent);
-                            text = parsed.text;
-                            html = parsed.html;
-                            if (!subject) subject = parsed.subject;
-                        }
-                    } catch (error) {
-                        console.error('[EMAIL] Error getting raw content:', error);
-                    }
+            // Extract headers
+            const headers: Record<string, string> = {};
+            if (emailContent.headers) {
+                for (const [key, value] of emailContent.headers) {
+                    headers[key.toLowerCase()] = Array.isArray(value) ? value.join(', ') : value;
                 }
             }
             
             const emailMessage: EmailMessage = {
-                from: from || '',
-                to: to || '',
-                subject: subject,
-                text: text,
-                html: html,
+                from: from || emailContent.from?.address || '',
+                to: to || emailContent.to?.[0]?.address || '',
+                subject: emailContent.subject || headers['subject'] || '',
+                text: emailContent.text || '',
+                html: emailContent.html || '',
                 headers: headers,
-                size: (text?.length || 0) + (html?.length || 0)
+                size: (emailContent.text?.length || 0) + (emailContent.html?.length || 0)
             };
             
             console.log('[EMAIL] Final email message:', {
@@ -232,101 +202,6 @@ export class EmailHandler {
         }
     }
 
-    private parseRawEmail(rawContent: string): {
-        from?: string;
-        to?: string;
-        subject?: string;
-        text?: string;
-        html?: string;
-        headers?: Record<string, string>;
-    } {
-        const lines = rawContent.split('\n');
-        const headers: Record<string, string> = {};
-        let bodyStartIndex = 0;
-        let currentHeader = '';
-        
-        // Parse headers
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i];
-            
-            // Empty line indicates end of headers
-            if (line.trim() === '') {
-                bodyStartIndex = i + 1;
-                break;
-            }
-            
-            // Check if this is a continuation of the previous header
-            if (line.startsWith(' ') || line.startsWith('\t')) {
-                if (currentHeader) {
-                    headers[currentHeader] += ' ' + line.trim();
-                }
-            } else {
-                // New header
-                const colonIndex = line.indexOf(':');
-                if (colonIndex > 0) {
-                    currentHeader = line.substring(0, colonIndex).toLowerCase().trim();
-                    headers[currentHeader] = line.substring(colonIndex + 1).trim();
-                }
-            }
-        }
-        
-        // Extract body content
-        const bodyContent = lines.slice(bodyStartIndex).join('\n');
-        
-        // Simple MIME parsing for multipart content
-        let text: string | undefined;
-        let html: string | undefined;
-        
-        const contentType = headers['content-type'] || '';
-        if (contentType.includes('multipart/')) {
-            const boundaryMatch = contentType.match(/boundary=([^;]+)/);
-            if (boundaryMatch) {
-                const boundary = boundaryMatch[1].replace(/"/g, '');
-                const parts = bodyContent.split(`--${boundary}`);
-                
-                for (const part of parts) {
-                    const partLines = part.split('\n');
-                    let partBodyStart = 0;
-                    let partContentType = '';
-                    
-                    // Parse part headers
-                    for (let i = 0; i < partLines.length; i++) {
-                        if (partLines[i].trim() === '') {
-                            partBodyStart = i + 1;
-                            break;
-                        }
-                        if (partLines[i].toLowerCase().startsWith('content-type:')) {
-                            partContentType = partLines[i].substring(13).trim();
-                        }
-                    }
-                    
-                    const partBody = partLines.slice(partBodyStart).join('\n').trim();
-                    
-                    if (partContentType.includes('text/plain') && !text) {
-                        text = partBody;
-                    } else if (partContentType.includes('text/html') && !html) {
-                        html = partBody;
-                    }
-                }
-            }
-        } else {
-            // Single part email
-            if (contentType.includes('text/html')) {
-                html = bodyContent;
-            } else {
-                text = bodyContent;
-            }
-        }
-        
-        return {
-            from: headers['from'],
-            to: headers['to'],
-            subject: headers['subject'],
-            text: text || undefined,
-            html: html || undefined,
-            headers
-        };
-    }
 
     private parseHeaders(headers: any): Record<string, string> {
         if (!headers) return {};
