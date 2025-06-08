@@ -16,12 +16,13 @@ import { EmailHandler } from './email-handler';
 export default {
     async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
         const startTime = Date.now();
+        const url = new URL(request.url);
+        const path = url.pathname;
+        const method = request.method;
+        
         console.log(`[${method}] ${url.pathname} - Request started`);
         
         try {
-            const url = new URL(request.url);
-            const path = url.pathname;
-            const method = request.method;
 
             // CORS headers for all responses
             const corsHeaders = {
