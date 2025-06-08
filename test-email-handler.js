@@ -123,17 +123,9 @@ async function getMessages(token) {
                 console.log(`   Text Preview: ${preview}${msg.body_text.length > 100 ? '...' : ''}`);
             }
             
-            // Check if HTML was sanitized
+            // HTML content info
             if (msg.body_html) {
-                const hasScript = msg.body_html.includes('<script');
-                const hasIframe = msg.body_html.includes('<iframe');
-                const hasOnClick = msg.body_html.includes('onclick');
-                const hasOnError = msg.body_html.includes('onerror');
-                
-                console.log(`   🛡️  Security Check:`);
-                console.log(`      Scripts removed: ${!hasScript ? '✅' : '❌'}`);
-                console.log(`      Iframes removed: ${!hasIframe ? '✅' : '❌'}`);
-                console.log(`      Event handlers removed: ${!hasOnClick && !hasOnError ? '✅' : '❌'}`);
+                console.log(`   📄 HTML Content: ${msg.body_html.length} chars`);
             }
         });
         

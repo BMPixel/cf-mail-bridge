@@ -106,22 +106,10 @@ export class EmailHandler {
     private cleanHtml(html: string | undefined): string | null {
         if (!html) return null;
         
-        console.log('[EMAIL] Sanitizing HTML content');
-        const originalLength = html.length;
+        console.log('[EMAIL] Processing HTML content');
         
-        // Basic HTML cleaning - remove dangerous scripts and normalize
-        const cleaned = html
-            .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-            .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
-            .replace(/javascript:/gi, '')
-            .replace(/on\w+\s*=/gi, '')
-            .trim() || null;
-            
-        if (cleaned && cleaned.length < originalLength) {
-            console.log(`[EMAIL] Removed ${originalLength - cleaned.length} chars of potentially malicious content`);
-        }
-        
-        return cleaned;
+        // Return HTML content as-is without sanitization
+        return html.trim() || null;
     }
 
     private generateMessageId(): string {

@@ -15,7 +15,7 @@ A production-ready email message queue system built on Cloudflare Workers that p
 │                   Email Handler Module                          │
 │  • Validates email format                                      │
 │  • Extracts username from email address                        │
-│  • Sanitizes content (XSS protection)                          │
+│  • Processes email content                                     │
 │  • Stores in D1 database                                       │
 └─────────────────────┬───────────────────────────────────────────┘
                       │
@@ -57,7 +57,7 @@ testing/
 └── email-test-samples/         # Sample email payloads
     ├── sample-email-1.json     # Basic email test
     ├── sample-email-2.json     # Newsletter with HTML
-    └── malicious-email.json    # XSS security test
+    └── malicious-email.json    # Email with HTML tags
 
 documentation/
 └── README.md                   # This file
@@ -256,10 +256,10 @@ The project includes pre-configured email test samples:
 - Multiple headers
 - Tests content handling
 
-### Sample 3: Security Test (`malicious-email.json`)
-- Contains XSS attack vectors
-- Tests HTML sanitization
-- Verifies security protections
+### Sample 3: HTML Email (`malicious-email.json`)
+- Contains various HTML tags
+- Tests HTML content handling
+- Verifies email processing
 
 ### Testing Workflow
 
@@ -278,8 +278,8 @@ The project includes pre-configured email test samples:
      http://localhost:8787/api/v1/messages
    ```
 
-4. **Check Security:**
-   Verify that malicious content is properly sanitized in the response.
+4. **Check Processing:**
+   Verify that HTML content is properly processed in the response.
 
 ## 🔧 Development Commands
 
@@ -383,11 +383,11 @@ Headers: Authorization: Bearer <jwt-token>
 - **Email format:** Standard email validation
 - **Query limits:** Max 200 messages per request
 
-### XSS Protection
-- **Script removal:** `<script>` tags stripped
-- **Iframe removal:** `<iframe>` tags stripped  
-- **Event handlers:** `onclick`, `onerror`, etc. removed
-- **JavaScript URLs:** `javascript:` protocol blocked
+### Content Processing
+- **HTML content:** Preserved as-is
+- **Text content:** Normalized line endings
+- **Headers:** Stored for reference
+- **Metadata:** Message size and timestamps tracked
 
 ## 🏗️ Database Schema
 

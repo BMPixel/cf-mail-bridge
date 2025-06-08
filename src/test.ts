@@ -240,12 +240,10 @@ async function runTests() {
         assertEqual(cleanText('line1\r\nline2\rline3\nline4'), 'line1\nline2\nline3\nline4');
         assertEqual(cleanText(''), null);
         
-        // Test HTML cleaning
-        const dirtyHtml = '<p>Content</p><script>alert("xss")</script><iframe src="evil"></iframe>';
-        const cleanedHtml = cleanHtml(dirtyHtml);
-        assert(!cleanedHtml!.includes('<script'), 'Scripts should be removed');
-        assert(!cleanedHtml!.includes('<iframe'), 'Iframes should be removed');
-        assert(cleanedHtml!.includes('<p>Content</p>'), 'Safe HTML should remain');
+        // Test HTML processing (no sanitization)
+        const htmlContent = '<p>Content</p><script>alert("test")</script><iframe src="example"></iframe>';
+        const processedHtml = cleanHtml(htmlContent);
+        assert(processedHtml === htmlContent.trim(), 'HTML should be returned as-is');
     });
 
     // Integration test for worker request handling
