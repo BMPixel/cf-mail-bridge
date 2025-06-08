@@ -170,9 +170,13 @@ export class EmailHandler {
             
             // Extract headers
             const headers: Record<string, string> = {};
-            if (emailContent.headers) {
-                for (const [key, value] of emailContent.headers) {
-                    headers[key.toLowerCase()] = Array.isArray(value) ? value.join(', ') : value;
+            if (emailContent.headers && Array.isArray(emailContent.headers)) {
+                for (const header of emailContent.headers) {
+                    if (header && typeof header === 'object') {
+                        for (const [key, value] of Object.entries(header)) {
+                            headers[key.toLowerCase()] = String(value);
+                        }
+                    }
                 }
             }
             

@@ -1,0 +1,1 @@
+- To implement and test new feature online: build, commit and then deploy.
