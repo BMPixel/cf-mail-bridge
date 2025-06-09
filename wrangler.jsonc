@@ -7,6 +7,7 @@
 	"name": "cf-mail-bridge",
 	"main": "src/index.ts",
 	"compatibility_date": "2025-06-07",
+	"account_id": "007c76aa04aec58ad7849da2db034f64",
 	"compatibility_flags": ["nodejs_compat"],
 	"vars": {
 		"JWT_SECRET": "your-secret-key-here-change-in-production"
