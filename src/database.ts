@@ -87,29 +87,43 @@ export class DatabaseService {
     async getMessagesByUserId(
         userId: number,
         limit: number = 50,
-        offset: number = 0
+        offset: number = 0,
+        prefix?: string
     ): Promise<{ messages: MessageResponse[]; count: number; hasMore: boolean }> {
         try {
-            console.log(`[DB] Fetching messages for user ${userId} (limit: ${limit}, offset: ${offset})`);
+            console.log(`[DB] Fetching messages for user ${userId} (limit: ${limit}, offset: ${offset}, prefix: ${prefix})`);
+            
+            // Build WHERE clause based on prefix filter
+            let whereClause = 'WHERE user_id = ?';
+            let countParams: any[] = [userId];
+            let messageParams: any[] = [userId];
+            
+            if (prefix) {
+                whereClause += ' AND to_address LIKE ?';
+                const prefixPattern = `${prefix}.%@%`;
+                countParams.push(prefixPattern);
+                messageParams.push(prefixPattern);
+            }
+            
             // Get total count
             const countResult = await this.db.prepare(`
                 SELECT COUNT(*) as count
                 FROM messages
-                WHERE user_id = ?
-            `).bind(userId).first<{ count: number }>();
+                ${whereClause}
+            `).bind(...countParams).first<{ count: number }>();
 
             const totalCount = countResult?.count || 0;
             console.log(`[DB] Total messages for user ${userId}: ${totalCount}`);
 
             // Get messages with pagination
             const messages = await this.db.prepare(`
-                SELECT id, message_id, from_address as "from", subject,
+                SELECT id, message_id, from_address as "from", to_address as "to", subject,
                        body_text, body_html, is_read, received_at, raw_size as size
                 FROM messages
-                WHERE user_id = ?
+                ${whereClause}
                 ORDER BY received_at DESC
                 LIMIT ? OFFSET ?
-            `).bind(userId, limit, offset).all<MessageResponse>();
+            `).bind(...messageParams, limit, offset).all<MessageResponse>();
 
             const hasMore = offset + limit < totalCount;
 
@@ -131,7 +145,7 @@ export class DatabaseService {
     async getMessageById(messageId: number, userId: number): Promise<MessageResponse | null> {
         try {
             const message = await this.db.prepare(`
-                SELECT id, message_id, from_address as "from", subject,
+                SELECT id, message_id, from_address as "from", to_address as "to", subject,
                        body_text, body_html, is_read, received_at, raw_size as size
                 FROM messages
                 WHERE id = ? AND user_id = ?

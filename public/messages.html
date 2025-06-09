@@ -411,6 +411,7 @@
                     <div class="detail-subject">${escapeHtml(message.subject || '(No subject)')}</div>
                     <div class="detail-meta">
                         <div><strong>From:</strong> ${escapeHtml(message.from)}</div>
+                        <div><strong>To:</strong> ${escapeHtml(message.to)}</div>
                         <div><strong>Date:</strong> ${formatDateTime(message.received_at)}</div>
                         ${message.size ? `<div><strong>Size:</strong> ${formatSize(message.size)}</div>` : ''}
                     </div>
