@@ -7,7 +7,10 @@
 		"dev": "wrangler dev",
 		"start": "wrangler dev",
 		"cf-typegen": "wrangler types",
-		"test": "npm run dev -- --test",
+		"test": "vitest",
+		"test:run": "vitest run",
+		"test:watch": "vitest --watch",
+		"test:ui": "vitest --ui",
 		"test-api": "node test-api.js",
 		"test-api-dev": "TEST_URL=http://localhost:8787 node test-api.js",
 		"test-email": "node test-email-handler.js",
@@ -24,9 +27,15 @@
 		"turndown": "^7.2.0"
 	},
 	"devDependencies": {
+		"@cloudflare/vitest-pool-workers": "^0.5.15",
+		"@types/better-sqlite3": "^7.6.13",
 		"@types/node": "^20.11.0",
 		"@types/turndown": "^5.0.5",
+		"better-sqlite3": "^11.10.0",
+		"miniflare": "^4.20250525.1",
 		"typescript": "^5.5.2",
+		"vite-tsconfig-paths": "^5.1.4",
+		"vitest": "^2.1.5",
 		"wrangler": "^4.19.1"
 	}
 }
