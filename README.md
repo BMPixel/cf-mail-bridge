@@ -1,6 +1,16 @@
-# Email Bridge Service - Developer Documentation
+# CF Mail Bridge Documentation
 
 A production-ready email message queue system built on Cloudflare Workers that provides programmatic email registration and message retrieval services.
+
+## Documentation Structure
+
+- **[API Reference](docs/api/API.md)** - Complete API specification and endpoints
+- **[Development Guide](docs/development/)** - Development setup, testing, and implementation
+  - [Technical Specification](docs/development/SPEC.md) - System architecture and design
+  - [Testing Guide](docs/development/TESTING.md) - Comprehensive testing instructions
+  - [Development Tasks](docs/development/TASK.md) - Implementation roadmap
+- **[Implementation Guides](docs/guides/)** - Detailed implementation guides
+  - [Resend Integration Guide](docs/guides/resend-implementation-guide.md) - Email service integration
 
 ## 🏗️ Architecture Overview
 

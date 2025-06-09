@@ -4,7 +4,7 @@
 
 CF Mail Bridge is a Cloudflare Workers-based email bridge service that provides email message queuing functionality. It allows users to register, authenticate, and access their email messages through a RESTful API.
 
-**Base URL**: `https://your-worker-domain.workers.dev`
+**Base URL**: `https://tai.chat`
 
 ## Authentication
 
@@ -70,7 +70,7 @@ All endpoints return consistent error responses:
   "success": true,
   "data": {
     "username": "string",
-    "email": "username@agent.tai.chat",
+    "email": "username@tai.chat",
     "token": "jwt_token_string"
   }
 }
@@ -78,7 +78,7 @@ All endpoints return consistent error responses:
 
 **Example**:
 ```bash
-curl -X POST https://your-worker.workers.dev/api/v1/register \
+curl -X POST https://tai.chat/api/v1/register \
   -H "Content-Type: application/json" \
   -d '{"username": "johndoe", "password": "mypassword123"}'
 ```
@@ -110,7 +110,7 @@ curl -X POST https://your-worker.workers.dev/api/v1/register \
 
 **Example**:
 ```bash
-curl -X POST https://your-worker.workers.dev/api/v1/login \
+curl -X POST https://tai.chat/api/v1/login \
   -H "Content-Type: application/json" \
   -d '{"username": "johndoe", "password": "mypassword123"}'
 ```
@@ -139,7 +139,7 @@ Authorization: Bearer <current_token>
 
 **Example**:
 ```bash
-curl -X POST https://your-worker.workers.dev/api/v1/refresh \
+curl -X POST https://tai.chat/api/v1/refresh \
   -H "Authorization: Bearer your_current_token"
 ```
 
@@ -189,19 +189,19 @@ Authorization: Bearer <token>
 
 Basic request:
 ```bash
-curl -X GET https://your-worker.workers.dev/api/v1/messages \
+curl -X GET https://tai.chat/api/v1/messages \
   -H "Authorization: Bearer your_token"
 ```
 
 With pagination:
 ```bash
-curl -X GET "https://your-worker.workers.dev/api/v1/messages?limit=10&offset=20" \
+curl -X GET "https://tai.chat/api/v1/messages?limit=10&offset=20" \
   -H "Authorization: Bearer your_token"
 ```
 
 With date filtering:
 ```bash
-curl -X GET "https://your-worker.workers.dev/api/v1/messages?date_from=2024-01-01&date_to=2024-01-31" \
+curl -X GET "https://tai.chat/api/v1/messages?date_from=2024-01-01&date_to=2024-01-31" \
   -H "Authorization: Bearer your_token"
 ```
 
@@ -240,7 +240,7 @@ Authorization: Bearer <token>
 
 **Example**:
 ```bash
-curl -X GET https://your-worker.workers.dev/api/v1/messages/123 \
+curl -X GET https://tai.chat/api/v1/messages/123 \
   -H "Authorization: Bearer your_token"
 ```
 
@@ -275,7 +275,7 @@ curl -X GET https://your-worker.workers.dev/api/v1/messages/123 \
 
 **Example**:
 ```bash
-curl -X POST https://your-worker.workers.dev/api/v1/send-test-email \
+curl -X POST https://tai.chat/api/v1/send-test-email \
   -H "Content-Type: application/json" \
   -d '{"to": "test@example.com", "subject": "Test Email"}'
 ```
@@ -304,7 +304,7 @@ curl -X POST https://your-worker.workers.dev/api/v1/send-test-email \
 
 **Example**:
 ```bash
-curl -X GET https://your-worker.workers.dev/health
+curl -X GET https://tai.chat/health
 ```
 
 ## Data Models
@@ -364,7 +364,7 @@ The service also provides web interface endpoints:
 
 The service automatically processes incoming emails via Cloudflare's Email Routing:
 
-- Emails sent to `*@agent.tai.chat` are automatically processed
+- Emails sent to `*@tai.chat` are automatically processed
 - Messages are parsed and stored in the database
 - Users can access their messages via the API
 
