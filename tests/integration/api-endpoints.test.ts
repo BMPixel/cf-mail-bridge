@@ -352,17 +352,18 @@ describe('API Endpoints Integration Tests', () => {
       userToken = registerData.data.token;
     });
 
-    it('should handle test email request', async () => {
-      const response = await fetch(`${TEST_BASE_URL}/api/v1/send-test-email`, {
+    it('should handle email request with valid sender', async () => {
+      const response = await fetch(`${TEST_BASE_URL}/api/v1/send-email`, {
         method: 'POST',
         headers: { 
           'Authorization': `Bearer ${userToken}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          to: 'emailuser123@tai.chat',
+          to: 'test@example.com',
+          from: 'emailuser123@tai.chat',
           subject: 'Test Email',
-          content: 'This is a test email.'
+          message: 'This is a test email.'
         })
       });
 
@@ -373,8 +374,96 @@ describe('API Endpoints Integration Tests', () => {
       expect(data).toHaveProperty('success');
     });
 
-    it('should reject unauthorized test email', async () => {
-      const response = await fetch(`${TEST_BASE_URL}/api/v1/send-test-email`, {
+    it('should allow authenticated user to send from their own username', async () => {
+      const response = await fetch(`${TEST_BASE_URL}/api/v1/send-email`, {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${userToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          to: 'test@example.com',
+          from: 'emailuser123@tai.chat',
+          subject: 'Test Email',
+          message: 'Test message'
+        })
+      });
+
+      expect([200, 500]).toContain(response.status);
+      
+      const data = await response.json();
+      expect(data).toHaveProperty('success');
+    });
+
+    it('should allow authenticated user to send from prefixed address', async () => {
+      const response = await fetch(`${TEST_BASE_URL}/api/v1/send-email`, {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${userToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          to: 'test@example.com',
+          from: 'desktop.emailuser123@tai.chat',
+          subject: 'Test Email',
+          message: 'Test message'
+        })
+      });
+
+      expect([200, 500]).toContain(response.status);
+      
+      const data = await response.json();
+      expect(data).toHaveProperty('success');
+    });
+
+    it('should reject user trying to send from different username', async () => {
+      const response = await fetch(`${TEST_BASE_URL}/api/v1/send-email`, {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${userToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          to: 'test@example.com',
+          from: 'otheruser@tai.chat',
+          subject: 'Test Email',
+          message: 'Test message'
+        })
+      });
+
+      expect(response.status).toBe(403);
+      
+      const data = await response.json();
+      expect(data.success).toBe(false);
+      expect(data.error.code).toBe('FORBIDDEN');
+      expect(data.error.message).toContain('sender address');
+    });
+
+    it('should reject user trying to send from different username with prefix', async () => {
+      const response = await fetch(`${TEST_BASE_URL}/api/v1/send-email`, {
+        method: 'POST',
+        headers: { 
+          'Authorization': `Bearer ${userToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          to: 'test@example.com',
+          from: 'mobile.admin@tai.chat',
+          subject: 'Test Email',
+          message: 'Test message'
+        })
+      });
+
+      expect(response.status).toBe(403);
+      
+      const data = await response.json();
+      expect(data.success).toBe(false);
+      expect(data.error.code).toBe('FORBIDDEN');
+      expect(data.error.message).toContain('sender address');
+    });
+
+    it('should reject unauthorized email request', async () => {
+      const response = await fetch(`${TEST_BASE_URL}/api/v1/send-email`, {
         method: 'POST',
         headers: { 
           'Authorization': 'Bearer invalid-token',
@@ -382,8 +471,30 @@ describe('API Endpoints Integration Tests', () => {
         },
         body: JSON.stringify({
           to: 'test@tai.chat',
+          from: 'test@tai.chat',
           subject: 'Test',
-          content: 'Test'
+          message: 'Test'
+        })
+      });
+
+      expect(response.status).toBe(401);
+      
+      const data = await response.json();
+      expect(data.success).toBe(false);
+      expect(data.error.code).toBe('UNAUTHORIZED');
+    });
+
+    it('should reject request without authentication', async () => {
+      const response = await fetch(`${TEST_BASE_URL}/api/v1/send-email`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          to: 'test@example.com',
+          from: 'test@tai.chat',
+          subject: 'Test',
+          message: 'Test'
         })
       });
 

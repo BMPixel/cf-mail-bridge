@@ -109,7 +109,7 @@ export default {
             }
 
             if (path === '/api/v1/send-email' && method === 'POST') {
-                return handleSendEmail(request, emailHandler, corsHeaders);
+                return handleSendEmail(request, authService, emailHandler, corsHeaders);
             }
 
             // 404 for unmatched routes
@@ -1344,10 +1344,26 @@ async function handleMessagesPage(corsHeaders: Record<string, string>): Promise<
 
 async function handleSendEmail(
     request: Request,
+    authService: AuthService,
     emailHandler: any,
     corsHeaders: Record<string, string>
 ): Promise<Response> {
     try {
+        // Require authentication for sending emails
+        const authHeader = request.headers.get('Authorization');
+        const token = authService.extractTokenFromHeader(authHeader);
+        
+        if (!token) {
+            return createErrorResponse(ErrorCode.UNAUTHORIZED, 'Missing or invalid token', 401, corsHeaders);
+        }
+        
+        const payload = await authService.verifyToken(token);
+        if (!payload) {
+            return createErrorResponse(ErrorCode.UNAUTHORIZED, 'Invalid token', 401, corsHeaders);
+        }
+        
+        const authenticatedUsername = payload.sub;
+        
         const body = await request.json();
         const { to, from, subject, message, html } = body;
         
@@ -1372,7 +1388,12 @@ async function handleSendEmail(
             return createErrorResponse(ErrorCode.INVALID_REQUEST, 'Sender must be from tai.chat domain', 400, corsHeaders);
         }
         
-        console.log(`[SEND_EMAIL] Sending email to: ${to} from: ${senderEmail}`);
+        // Validate that sender email matches authenticated user
+        if (!isAuthorizedSender(senderEmail, authenticatedUsername)) {
+            return createErrorResponse(ErrorCode.FORBIDDEN, 'You are not authorized to send from this sender address', 403, corsHeaders);
+        }
+        
+        console.log(`[SEND_EMAIL] Sending email to: ${to} from: ${senderEmail} (authenticated as: ${authenticatedUsername})`);
         
         const emailOptions = {
             from: senderEmail,
@@ -1430,6 +1451,41 @@ function createEmailHTML(): string {
 </div>`;
 }
 
+/**
+ * Checks if the authenticated user is authorized to send from the given sender email
+ * Supports both direct username and prefixed formats:
+ * - alice@tai.chat (for user 'alice')
+ * - desktop.alice@tai.chat (for user 'alice') 
+ * - mobile.alice@tai.chat (for user 'alice')
+ */
+function isAuthorizedSender(senderEmail: string, authenticatedUsername: string): boolean {
+    try {
+        // Extract the email part before @
+        const emailParts = senderEmail.split('@');
+        if (emailParts.length !== 2) {
+            return false;
+        }
+        
+        const emailUsername = emailParts[0].toLowerCase().trim();
+        
+        // Direct match: alice@tai.chat for user 'alice'
+        if (emailUsername === authenticatedUsername.toLowerCase()) {
+            return true;
+        }
+        
+        // Prefix match: desktop.alice@tai.chat for user 'alice'
+        if (emailUsername.includes('.')) {
+            const prefixParts = emailUsername.split('.');
+            // Take the last part as the username (same logic as extractUsernameFromEmail)
+            const extractedUsername = prefixParts[prefixParts.length - 1];
+            return extractedUsername === authenticatedUsername.toLowerCase();
+        }
+        
+        return false;
+    } catch (error) {
+        return false;
+    }
+}
 
 function createErrorResponse(
     code: string,
