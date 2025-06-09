@@ -23,14 +23,12 @@
 	"dependencies": {
 		"jose": "^5.2.0",
 		"postal-mime": "^2.3.2",
-		"resend": "^4.5.2",
-		"turndown": "^7.2.0"
+		"resend": "^4.5.2"
 	},
 	"devDependencies": {
 		"@cloudflare/vitest-pool-workers": "^0.5.15",
 		"@types/better-sqlite3": "^7.6.13",
 		"@types/node": "^20.11.0",
-		"@types/turndown": "^5.0.5",
 		"better-sqlite3": "^11.10.0",
 		"miniflare": "^4.20250525.1",
 		"typescript": "^5.5.2",

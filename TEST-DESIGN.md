@@ -213,12 +213,12 @@ cf-mail-bridge/
   - Size calculation
 
 #### `email/content-converter.test.ts`
-- **TurndownService Tests**
-  - Basic HTML conversion
+- **HTML to Text Conversion Tests**
+  - Basic HTML stripping
   - Complex nested structures
   - Code block preservation
   - Link conversion
-  - Fallback mechanism when service unavailable
+  - Fallback text extraction mechanism
 
 ### 2.4 Service Tests
 

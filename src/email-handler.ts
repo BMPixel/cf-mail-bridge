@@ -2,25 +2,11 @@ import { EmailMessage, ResendEmailOptions, EmailSendResult, Env } from './types'
 import { DatabaseService } from './database';
 import { getResendService, ResendEmailService } from './resend-service';
 import PostalMime from 'postal-mime';
-import TurndownService from 'turndown';
 
 export class EmailHandler {
-    private turndownService: any;
     private resendService: ResendEmailService;
 
     constructor(private dbService: DatabaseService, private env?: Env) {
-        // Initialize TurndownService with error handling for Cloudflare Workers
-        try {
-            this.turndownService = new TurndownService({
-                headingStyle: 'atx',
-                codeBlockStyle: 'fenced',
-                bulletListMarker: '-'
-            });
-            console.log('[EMAIL] TurndownService initialized successfully');
-        } catch (error) {
-            console.warn('[EMAIL] TurndownService initialization failed:', error);
-            this.turndownService = null;
-        }
         
         // Initialize Resend service if API key is available
         this.resendService = getResendService(env?.RESEND_API_KEY);
@@ -121,21 +107,9 @@ export class EmailHandler {
         const cleanedHtml = this.cleanHtml(message.html);
         let textContent: string | null = null;
 
-        // Convert HTML to markdown if HTML is available, otherwise use plain text
+        // Convert HTML to text if HTML is available, otherwise use plain text
         if (cleanedHtml) {
-            try {
-                if (this.turndownService) {
-                    textContent = this.turndownService.turndown(cleanedHtml);
-                    console.log('[EMAIL] HTML to markdown conversion successful');
-                } else {
-                    console.warn('[EMAIL] TurndownService not available, using HTML stripping fallback');
-                    textContent = this.htmlToTextFallback(cleanedHtml);
-                }
-            } catch (error) {
-                console.warn('[EMAIL] Failed to convert HTML to markdown:', error);
-                console.log('[EMAIL] Attempting HTML stripping fallback');
-                textContent = this.htmlToTextFallback(cleanedHtml) || this.cleanText(message.text) || null;
-            }
+            textContent = this.htmlToTextFallback(cleanedHtml) || this.cleanText(message.text) || null;
         } else {
             textContent = this.cleanText(message.text) || null;
         }

@@ -17,14 +17,6 @@ vi.mock('postal-mime', () => {
   };
 });
 
-// Mock turndown
-vi.mock('turndown', () => {
-  return {
-    default: vi.fn(() => ({
-      turndown: vi.fn((html) => `# Converted\n${html.replace(/<[^>]*>/g, '')}`)
-    }))
-  };
-});
 
 // Mock resend service
 vi.mock('../../../src/resend-service', () => {

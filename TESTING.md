@@ -144,7 +144,6 @@ Tests use comprehensive mocking to ensure fast, reliable unit tests:
 
 #### Mocked Services
 - **postal-mime**: Email parsing library
-- **turndown**: HTML to Markdown conversion
 - **ResendService**: Email sending service
 - **Database**: SQLite operations
 
