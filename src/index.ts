@@ -450,9 +450,10 @@ async function handleGetMessages(
         const url = new URL(request.url);
         const limit = Math.min(parseInt(url.searchParams.get('limit') || '50'), 200);
         const offset = parseInt(url.searchParams.get('offset') || '0');
+        const prefix = url.searchParams.get('prefix') || undefined;
         
         // Get messages
-        const result = await dbService.getMessagesByUserId(user.id, limit, offset);
+        const result = await dbService.getMessagesByUserId(user.id, limit, offset, prefix);
         
         const response: MessagesResponse = {
             success: true,
@@ -1270,6 +1271,7 @@ async function handleMessagesPage(corsHeaders: Record<string, string>): Promise<
                     <div class="detail-subject">\${escapeHtml(message.subject || '(No subject)')}</div>
                     <div class="detail-meta">
                         <div><strong>From:</strong> \${escapeHtml(message.from)}</div>
+                        <div><strong>To:</strong> \${escapeHtml(message.to)}</div>
                         <div><strong>Date:</strong> \${formatDateTime(message.received_at)}</div>
                         \${message.size ? \`<div><strong>Size:</strong> \${formatSize(message.size)}</div>\` : ''}
                     </div>
